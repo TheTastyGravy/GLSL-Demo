@@ -2,11 +2,13 @@
 
 #include "Application.h"
 #include <glm/mat4x4.hpp>
+#include <vector>
+
+class Planet;
 
 class GraphicsProjectApp : public aie::Application
 {
 public:
-
 	GraphicsProjectApp();
 	virtual ~GraphicsProjectApp();
 
@@ -17,8 +19,12 @@ public:
 	virtual void draw();
 
 protected:
+	void solarSystem();
 
 	// camera transforms
 	glm::mat4	m_viewMatrix;
 	glm::mat4	m_projectionMatrix;
+
+
+	std::vector<Planet*> planets = std::vector<Planet*>();
 };
