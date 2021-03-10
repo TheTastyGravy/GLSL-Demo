@@ -2,9 +2,10 @@
 #version 410
 
 out vec4 FragColor;
+in vec4 simpleFlatColor;
 
 
 void main()
 {
-    FragColor = vec4(1, 0, 1, 1);
+    FragColor = simpleFlatColor;
 }

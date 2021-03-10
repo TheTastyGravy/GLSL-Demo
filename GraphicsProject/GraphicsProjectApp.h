@@ -4,6 +4,7 @@
 #include <glm/mat4x4.hpp>
 #include <vector>
 #include "Mesh.h"
+#include "OBJMesh.h"
 #include "Shader.h"
 
 class Planet;
@@ -30,10 +31,23 @@ protected:
 	glm::mat4	viewMatrix;
 	glm::mat4	projectionMatrix;
 
-	//shader
+	//shaders
 	aie::ShaderProgram simpleShader;
+	aie::ShaderProgram bunnyShader;
+	aie::ShaderProgram statueShader;
+	aie::ShaderProgram dragonShader;
+	//square
 	Mesh quadMesh;
 	glm::mat4 quadTransform;
+	//bunny
+	aie::OBJMesh bunnyMesh;
+	glm::mat4 bunnyTransform;
+	//statue
+	aie::OBJMesh statueMesh;
+	glm::mat4 statueTransform;
+	//dragon
+	aie::OBJMesh dragonMesh;
+	glm::mat4 dragonTransform;
 
 
 	std::vector<Planet*> planets = std::vector<Planet*>();

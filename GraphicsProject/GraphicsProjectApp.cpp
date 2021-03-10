@@ -137,6 +137,7 @@ void GraphicsProjectApp::solarSystem()
 
 bool GraphicsProjectApp::loadShaderAndMeshLogic()
 {
+#pragma region Quad
 	//load the vertex shader
 	simpleShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/simple.vert");
 
@@ -149,7 +150,27 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 		return false;
 	}
 
-	quadMesh.initialiseQuad();
+	//define the 6 verticies for the two triangles of a quad
+	//Mesh::Vertex verticesNoIndex[6];
+	//verticesNoIndex[0].position = { -0.5f, 0.f, 0.5f,  1.f };
+	//verticesNoIndex[1].position = { 0.5f,  0.f, 0.5f,  1.f };
+	//verticesNoIndex[2].position = { -0.5f, 0.f, -0.5f, 1.f };
+	//
+	//verticesNoIndex[3].position = { -0.5f, 0.f, -0.5f, 1.f };
+	//verticesNoIndex[4].position = { 0.5f,  0.f, 0.5f,  1.f };
+	//verticesNoIndex[5].position = { 0.5f,  0.f, -0.5f, 1.f };
+
+	Mesh::Vertex vertices[4];
+	vertices[0].position = { -0.5f, 0.f, 0.5f,  1.f };
+	vertices[1].position = { 0.5f,  0.f, 0.5f,  1.f };
+	vertices[2].position = { -0.5f, 0.f, -0.5f, 1.f };
+	vertices[3].position = { 0.5f,  0.f, -0.5f, 1.f };
+
+	unsigned int indices[6] = { 0, 1, 2, 2, 1, 3 };
+
+	quadMesh.Initialise(4, vertices, 6, indices);
+
+
 	//make the quad 10x10 units
 	quadTransform =
 	{
@@ -158,17 +179,143 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 		0, 0, 10, 0,
 		0, 0, 0, 1
 	};
+#pragma endregion
+
+#pragma region FlatBunny
+	//load the vertex shader
+	bunnyShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/simple.vert");
+
+	//load the fragment shader
+	bunnyShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/simple.frag");
+
+	if (!bunnyShader.link())
+	{
+		printf("Bunny shader has an error: %s\n", bunnyShader.getLastError());
+		return false;
+	}
+
+	//check if can load bunny mesh
+	if (!bunnyMesh.load("./stanford/bunny.obj"))
+	{
+		printf("Bunny mesh failed\n");
+		return false;
+	}
+
+	bunnyTransform =
+	{
+		0.5f, 0, 0, 0,
+		0, 0.5f, 0, 0,
+		0, 0, 0.5f, 0,
+		-3, 0, 0, 1
+	};
+#pragma endregion
+
+#pragma region FlatStatue
+	//load the vertex shader
+	statueShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/simple.vert");
+
+	//load the fragment shader
+	statueShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/simple.frag");
+
+	if (!statueShader.link())
+	{
+		printf("Statue shader has an error: %s\n", statueShader.getLastError());
+		return false;
+	}
+
+	//check if can load statue mesh
+	if (!statueMesh.load("./stanford/Lucy.obj"))
+	{
+		printf("Statue mesh failed\n");
+		return false;
+	}
+
+	statueTransform =
+	{
+		0.5f, 0, 0, 0,
+		0, 0.5f, 0, 0,
+		0, 0, 0.5f, 0,
+		0, 0, -3, 1
+	};
+#pragma endregion
+
+#pragma region FlatDragon
+	//load the vertex shader
+	dragonShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/simple.vert");
+
+	//load the fragment shader
+	dragonShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/simple.frag");
+
+	if (!dragonShader.link())
+	{
+		printf("Dragon shader has an error: %s\n", dragonShader.getLastError());
+		return false;
+	}
+
+	//check if can load dragon mesh
+	if (!dragonMesh.load("./stanford/Dragon.obj"))
+	{
+		printf("Dragon mesh failed\n");
+		return false;
+	}
+
+	dragonTransform =
+	{
+		0.5f, 0, 0, 0,
+		0, 0.5f, 0, 0,
+		0, 0, 0.5f, 0,
+		2, 0, 2, 1
+	};
+#pragma endregion
 
 	return true;
 }
 
 void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
-	simpleShader.bind();
+	//projection view matrix
+	auto pvm = projectionMatrix * viewMatrix * glm::mat4(0);
 
-	//bind mesh transform (pvm = projection view matrix)
-	auto pvm = projectionMatrix * viewMatrix * quadTransform;
+#pragma region Quad
+	simpleShader.bind();
+	//bind mesh transform
+	pvm = projectionMatrix * viewMatrix * quadTransform;
 	simpleShader.bindUniform("ProjectionViewModel", pvm);
 
 	quadMesh.draw();
+#pragma endregion
+
+#pragma region FlatBunny
+	bunnyShader.bind();
+	//bind mesh transform
+	pvm = projectionMatrix * viewMatrix * bunnyTransform;
+	bunnyShader.bindUniform("ProjectionViewModel", pvm);
+	bunnyShader.bindUniform("MeshFlatColor", glm::vec4(0, 1, 0, 1));
+
+	//draw bunny mesh
+	bunnyMesh.draw();
+#pragma endregion
+
+#pragma region FlatStatue
+	statueShader.bind();
+	//bind mesh transform
+	pvm = projectionMatrix * viewMatrix * statueTransform;
+	statueShader.bindUniform("ProjectionViewModel", pvm);
+	statueShader.bindUniform("MeshFlatColor", glm::vec4(0, 1, 0, 1));
+
+	//draw statue mesh
+	statueMesh.draw();
+#pragma endregion
+
+#pragma region FlatDragon
+	dragonShader.bind();
+	//bind mesh transform
+	pvm = projectionMatrix * viewMatrix * dragonTransform;
+	dragonShader.bindUniform("ProjectionViewModel", pvm);
+	dragonShader.bindUniform("MeshFlatColor", glm::vec4(0, 1, 0, 1));
+
+	//draw dragon mesh
+	dragonMesh.draw();
+#pragma endregion
+
 }
