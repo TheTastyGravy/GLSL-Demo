@@ -27,14 +27,14 @@ bool GraphicsProjectApp::startup()
 	Gizmos::create(10000, 10000, 10000, 10000);
 
 	// create simple camera transforms
-	m_viewMatrix = glm::lookAt(vec3(10), vec3(0), vec3(0, 1, 0));
-	m_projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, 16.0f / 9.0f, 0.1f, 1000.0f);
+	viewMatrix = glm::lookAt(vec3(10), vec3(0), vec3(0, 1, 0));
+	projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, getWindowWidth() / (float)getWindowHeight(), 0.1f, 1000.0f);
 
 
-	solarSystem();
+	//solarSystem();
 	
 
-	return true;
+	return loadShaderAndMeshLogic();
 }
 
 void GraphicsProjectApp::shutdown()
@@ -57,6 +57,24 @@ void GraphicsProjectApp::update(float deltaTime)
 	{
 		quit();
 	}
+	
+	//rotate plane
+	if (input->isKeyDown(aie::INPUT_KEY_UP))
+	{
+		quadTransform = glm::rotate(quadTransform, deltaTime * glm::radians(90.f), glm::vec3(1, 0, 0));
+	}
+	if (input->isKeyDown(aie::INPUT_KEY_DOWN))
+	{
+		quadTransform = glm::rotate(quadTransform, -deltaTime * glm::radians(90.f), glm::vec3(1, 0, 0));
+	}
+	if (input->isKeyDown(aie::INPUT_KEY_LEFT))
+	{
+		quadTransform = glm::rotate(quadTransform, -deltaTime * glm::radians(90.f), glm::vec3(0, 1, 0));
+	}
+	if (input->isKeyDown(aie::INPUT_KEY_RIGHT))
+	{
+		quadTransform = glm::rotate(quadTransform, deltaTime * glm::radians(90.f), glm::vec3(0, 1, 0));
+	}
 }
 
 void GraphicsProjectApp::draw()
@@ -66,7 +84,7 @@ void GraphicsProjectApp::draw()
 	Gizmos::clear();
 
 	// update perspective based on screen size
-	m_projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, getWindowWidth() / (float)getWindowHeight(), 0.1f, 1000.0f);
+	projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, getWindowWidth() / (float)getWindowHeight(), 0.1f, 1000.0f);
 
 	// draw a simple grid with gizmos
 	vec4 white(1);
@@ -85,13 +103,15 @@ void GraphicsProjectApp::draw()
 
 	// ----- DRAW -----
 
+	drawShaderAndMeshs(projectionMatrix, viewMatrix);
+
 	for (auto planet : planets)
 	{
 		planet->drawGizmos();
 	}
 
 
-	Gizmos::draw(m_projectionMatrix * m_viewMatrix);
+	Gizmos::draw(projectionMatrix * viewMatrix);
 }
 
 
@@ -111,4 +131,44 @@ void GraphicsProjectApp::solarSystem()
 	planets.push_back(new Planet(5.8232f * sizeMod, vec3(0), 14.3f * distMod, 29.46f * speedMod, 1));	//saturn
 	planets.push_back(new Planet(2.5362f * sizeMod, vec3(0), 28.7f * distMod, 84.01f * speedMod, 1));	//uranus
 	planets.push_back(new Planet(2.4622f * sizeMod, vec3(0), 44.9f * distMod, 164.8f * speedMod, 1));	//neptune
+}
+
+
+
+bool GraphicsProjectApp::loadShaderAndMeshLogic()
+{
+	//load the vertex shader
+	simpleShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/simple.vert");
+
+	//load the fragment shader
+	simpleShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/simple.frag");
+
+	if (!simpleShader.link())
+	{
+		printf("Simple shader has an error: %s\n", simpleShader.getLastError());
+		return false;
+	}
+
+	quadMesh.initialiseQuad();
+	//make the quad 10x10 units
+	quadTransform =
+	{
+		10, 0, 0, 0,
+		0, 10, 0, 0,
+		0, 0, 10, 0,
+		0, 0, 0, 1
+	};
+
+	return true;
+}
+
+void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
+{
+	simpleShader.bind();
+
+	//bind mesh transform (pvm = projection view matrix)
+	auto pvm = projectionMatrix * viewMatrix * quadTransform;
+	simpleShader.bindUniform("ProjectionViewModel", pvm);
+
+	quadMesh.draw();
 }
