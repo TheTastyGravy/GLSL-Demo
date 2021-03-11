@@ -5,6 +5,7 @@
 #include "Mesh.h"
 #include "OBJMesh.h"
 #include "Shader.h"
+#include "Camera.h"
 
 class GraphicsProjectApp : public aie::Application
 {
@@ -32,9 +33,10 @@ protected:
 	};
 	void drawOBJMesh(aie::ShaderProgram& shader, const MeshObject& obj, const glm::mat4& projMatrix, const glm::mat4& viewMatrix);
 
-	//camera transforms
-	glm::mat4	viewMatrix;
-	glm::mat4	projectionMatrix;
+
+	Camera camera[2];
+	//which camera is active?
+	unsigned int cameraIndex;
 
 	//shaders
 	aie::ShaderProgram simpleShader;

@@ -8,6 +8,7 @@
 
 GraphicsProjectApp::GraphicsProjectApp()
 {
+	cameraIndex = 0;
 }
 
 GraphicsProjectApp::~GraphicsProjectApp()
@@ -20,10 +21,6 @@ bool GraphicsProjectApp::startup()
 
 	// initialise gizmo primitive counts
 	aie::Gizmos::create(10000, 10000, 10000, 10000);
-
-	// create simple camera transforms
-	viewMatrix = glm::lookAt(glm::vec3(10), glm::vec3(0), glm::vec3(0, 1, 0));
-	projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, getWindowWidth() / (float)getWindowHeight(), 0.1f, 1000.0f);
 
 	light.color = { 0.8f, 0.8f, 0.8f };
 	ambientLight = { 0.25f, 0.25f, 0.25f };
@@ -39,37 +36,50 @@ void GraphicsProjectApp::shutdown()
 
 void GraphicsProjectApp::update(float deltaTime)
 {
+	aie::Input* input = aie::Input::getInstance();
+
+	//update GUI tools
 	IMGUI_Logic();
 
+	//rotate light
 	float time = getTime();
-
 	light.direction = glm::normalize(glm::vec3(glm::cos(time * 2), glm::sin(time * 2), 0));
+
+	//update current camera
+	camera[cameraIndex].update(deltaTime);
+	//swap camera with numbers
+	if (input->wasKeyPressed(aie::INPUT_KEY_1))
+	{
+		cameraIndex = 0;
+	}
+	if (input->wasKeyPressed(aie::INPUT_KEY_2))
+	{
+		cameraIndex = 1;
+	}
 	
 
 	// quit if we press escape
-	aie::Input* input = aie::Input::getInstance();
 	if (input->isKeyDown(aie::INPUT_KEY_ESCAPE))
 	{
 		quit();
 	}
-	
 	//rotate plane
-	if (input->isKeyDown(aie::INPUT_KEY_UP))
-	{
-		quadTransform = glm::rotate(quadTransform, deltaTime * glm::radians(90.f), glm::vec3(1, 0, 0));
-	}
-	if (input->isKeyDown(aie::INPUT_KEY_DOWN))
-	{
-		quadTransform = glm::rotate(quadTransform, -deltaTime * glm::radians(90.f), glm::vec3(1, 0, 0));
-	}
-	if (input->isKeyDown(aie::INPUT_KEY_LEFT))
-	{
-		quadTransform = glm::rotate(quadTransform, -deltaTime * glm::radians(90.f), glm::vec3(0, 1, 0));
-	}
-	if (input->isKeyDown(aie::INPUT_KEY_RIGHT))
-	{
-		quadTransform = glm::rotate(quadTransform, deltaTime * glm::radians(90.f), glm::vec3(0, 1, 0));
-	}
+	//if (input->isKeyDown(aie::INPUT_KEY_UP))
+	//{
+	//	quadTransform = glm::rotate(quadTransform, deltaTime * glm::radians(90.f), glm::vec3(1, 0, 0));
+	//}
+	//if (input->isKeyDown(aie::INPUT_KEY_DOWN))
+	//{
+	//	quadTransform = glm::rotate(quadTransform, -deltaTime * glm::radians(90.f), glm::vec3(1, 0, 0));
+	//}
+	//if (input->isKeyDown(aie::INPUT_KEY_LEFT))
+	//{
+	//	quadTransform = glm::rotate(quadTransform, -deltaTime * glm::radians(90.f), glm::vec3(0, 1, 0));
+	//}
+	//if (input->isKeyDown(aie::INPUT_KEY_RIGHT))
+	//{
+	//	quadTransform = glm::rotate(quadTransform, deltaTime * glm::radians(90.f), glm::vec3(0, 1, 0));
+	//}
 }
 
 void GraphicsProjectApp::draw()
@@ -78,8 +88,10 @@ void GraphicsProjectApp::draw()
 	clearScreen();
 	aie::Gizmos::clear();
 
-	// update perspective based on screen size
-	projectionMatrix = glm::perspective(glm::pi<float>() * 0.25f, getWindowWidth() / (float)getWindowHeight(), 0.1f, 1000.0f);
+	//get camera matrices
+	glm::mat4 projectionMatrix = camera[cameraIndex].getProjectionMatrix(getWindowWidth(), getWindowHeight());
+	glm::mat4 viewMatrix = camera[cameraIndex].getViewMatrix();
+
 
 	// draw a simple grid with gizmos
 	glm::vec4 white(1);
@@ -93,12 +105,9 @@ void GraphicsProjectApp::draw()
 			glm::vec3(-10, 0, -10 + i),
 			i == 10 ? white : black);
 	}
-	// add a transform so that we can see the axis
-	aie::Gizmos::addTransform(glm::mat4(1));
 
 	// ----- DRAW -----
 	drawShaderAndMeshs(projectionMatrix, viewMatrix);
-
 
 	aie::Gizmos::draw(projectionMatrix * viewMatrix);
 }
