@@ -147,7 +147,7 @@ bool OBJMesh::load(const char* filename, bool loadTextures /* = true */, bool fl
 	return true;
 }
 
-void OBJMesh::draw(bool usePatches /* = false */) {
+void OBJMesh::draw(bool usePatches /* = false */) const {
 
 	int program = -1;
 	glGetIntegerv(GL_CURRENT_PROGRAM, &program);
@@ -163,7 +163,7 @@ void OBJMesh::draw(bool usePatches /* = false */) {
 	int ksUniform = glGetUniformLocation(program, "Ks");
 	int keUniform = glGetUniformLocation(program, "Ke");
 	int opacityUniform = glGetUniformLocation(program, "opacity");
-	int specPowUniform = glGetUniformLocation(program, "specularPower");
+	int specPowUniform = glGetUniformLocation(program, "Ns");
 
 	int alphaTexUniform = glGetUniformLocation(program, "alphaTexture");
 	int ambientTexUniform = glGetUniformLocation(program, "ambientTexture");

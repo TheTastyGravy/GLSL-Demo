@@ -54,7 +54,7 @@ public:
 	bool load(const char* filename, bool loadTextures = true, bool flipTextureV = false);
 
 	// allow option to draw as patches for tessellation
-	void draw(bool usePatches = false);
+	void draw(bool usePatches = false) const;
 
 	// access to the filename that was loaded
 	const std::string& getFilename() const { return m_filename; }

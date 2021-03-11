@@ -2,12 +2,9 @@
 
 #include "Application.h"
 #include <glm/mat4x4.hpp>
-#include <vector>
 #include "Mesh.h"
 #include "OBJMesh.h"
 #include "Shader.h"
-
-class Planet;
 
 class GraphicsProjectApp : public aie::Application
 {
@@ -23,33 +20,43 @@ public:
 
 	bool loadShaderAndMeshLogic();
 	void drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat4 viewMatrix);
+	
+	void IMGUI_Logic();
 
 protected:
-	void solarSystem();
+	struct MeshObject
+	{
+		aie::OBJMesh mesh;
+		glm::mat4 transform;
+		aie::OBJMesh::Material* material;
+	};
+	void drawOBJMesh(aie::ShaderProgram& shader, const MeshObject& obj, const glm::mat4& projMatrix, const glm::mat4& viewMatrix);
 
-	// camera transforms
+	//camera transforms
 	glm::mat4	viewMatrix;
 	glm::mat4	projectionMatrix;
 
 	//shaders
 	aie::ShaderProgram simpleShader;
-	aie::ShaderProgram bunnyShader;
-	aie::ShaderProgram statueShader;
-	aie::ShaderProgram dragonShader;
+	aie::ShaderProgram phongShader;
+
 	//square
 	Mesh quadMesh;
 	glm::mat4 quadTransform;
-	//bunny
-	aie::OBJMesh bunnyMesh;
-	glm::mat4 bunnyTransform;
-	//statue
-	aie::OBJMesh statueMesh;
-	glm::mat4 statueTransform;
-	//dragon
-	aie::OBJMesh dragonMesh;
-	glm::mat4 dragonTransform;
+	//mesh objects
+	MeshObject bunny;
+	MeshObject buddha;
+	MeshObject dragon;
+	MeshObject lucy;
 
 
-	std::vector<Planet*> planets = std::vector<Planet*>();
+	struct Light
+	{
+		glm::vec3 direction;
+		glm::vec3 color;
+	};
+
+	Light light;
+	glm::vec3 ambientLight;
 
 };
