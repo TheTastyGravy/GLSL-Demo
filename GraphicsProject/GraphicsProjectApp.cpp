@@ -63,23 +63,6 @@ void GraphicsProjectApp::update(float deltaTime)
 	{
 		quit();
 	}
-	//rotate plane
-	//if (input->isKeyDown(aie::INPUT_KEY_UP))
-	//{
-	//	quadTransform = glm::rotate(quadTransform, deltaTime * glm::radians(90.f), glm::vec3(1, 0, 0));
-	//}
-	//if (input->isKeyDown(aie::INPUT_KEY_DOWN))
-	//{
-	//	quadTransform = glm::rotate(quadTransform, -deltaTime * glm::radians(90.f), glm::vec3(1, 0, 0));
-	//}
-	//if (input->isKeyDown(aie::INPUT_KEY_LEFT))
-	//{
-	//	quadTransform = glm::rotate(quadTransform, -deltaTime * glm::radians(90.f), glm::vec3(0, 1, 0));
-	//}
-	//if (input->isKeyDown(aie::INPUT_KEY_RIGHT))
-	//{
-	//	quadTransform = glm::rotate(quadTransform, deltaTime * glm::radians(90.f), glm::vec3(0, 1, 0));
-	//}
 }
 
 void GraphicsProjectApp::draw()
@@ -117,50 +100,44 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 {
 	//load shaders
 #pragma region Shaders
-	//simple shader
-	simpleShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/simple.vert");
-	simpleShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/simple.frag");
-
-	if (!simpleShader.link())
-	{
-		printf("Simple shader has an error: %s\n", simpleShader.getLastError());
-		return false;
-	}
-
 	//phong shader
 	phongShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/phong.vert");
 	phongShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/phong.frag");
-
 	if (!phongShader.link())
 	{
-		printf("Phong shader has an error: %s", phongShader.getLastError());
+		printf("Phong shader has an error: %s\n", phongShader.getLastError());
+		return false;
+	}
+
+	//texture shader
+	textureShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/textured.vert");
+	textureShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/textured.frag");
+	if (!textureShader.link())
+	{
+		printf("Texture shader has an error: %s\n", textureShader.getLastError());
+		return false;
+	}
+
+	//normal map shader
+	normalMapShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/normalMap.vert");
+	normalMapShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/normalMap.frag");
+	if (!normalMapShader.link())
+	{
+		printf("Normal map shader has an error: %s\n", normalMapShader.getLastError());
 		return false;
 	}
 #pragma endregion
 
 
 #pragma region Quad
-	//define the 6 verticies for the two triangles of a quad
-	//Mesh::Vertex verticesNoIndex[6];
-	//verticesNoIndex[0].position = { -0.5f, 0.f, 0.5f,  1.f };
-	//verticesNoIndex[1].position = { 0.5f,  0.f, 0.5f,  1.f };
-	//verticesNoIndex[2].position = { -0.5f, 0.f, -0.5f, 1.f };
-	//
-	//verticesNoIndex[3].position = { -0.5f, 0.f, -0.5f, 1.f };
-	//verticesNoIndex[4].position = { 0.5f,  0.f, 0.5f,  1.f };
-	//verticesNoIndex[5].position = { 0.5f,  0.f, -0.5f, 1.f };
+	quadMesh.initialiseQuad();
 
-	//use the corner vertices
-	Mesh::Vertex vertices[4];
-	vertices[0].position = { -0.5f, 0.f, 0.5f,  1.f };
-	vertices[1].position = { 0.5f,  0.f, 0.5f,  1.f };
-	vertices[2].position = { -0.5f, 0.f, -0.5f, 1.f };
-	vertices[3].position = { 0.5f,  0.f, -0.5f, 1.f };
-	//index the order to use vertices in
-	unsigned int indices[6] = { 0, 1, 2, 2, 1, 3 };	//[012] [213]
-
-	quadMesh.Initialise(4, vertices, 6, indices);
-
+	//load texture
+	if (!gridTexture.load("./textures/numbered_grid.tga"))
+	{
+		printf("Failed to load: numbered_grid.tga\n");
+		return false;
+	}
 
 	//make the quad 10x10 units
 	quadTransform =
@@ -171,6 +148,7 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 		0, 0, 0, 1
 	};
 #pragma endregion
+
 
 #pragma region Bunny
 	//check if can load bunny mesh
@@ -244,11 +222,31 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 	};
 #pragma endregion
 
+#pragma region SoulSpear
+	//check if can load lucy mesh
+	if (!soulSpear.mesh.load("./soulspear/soulspear.obj"))
+	{
+		printf("SoulSpear mesh failed\n");
+		return false;
+	}
+	soulSpear.material = &soulSpear.mesh.getMaterial(0);
+
+	soulSpear.transform =
+	{
+		0.5f, 0, 0, 0,
+		0, 0.5f, 0, 0,
+		0, 0, 0.5f, 0,
+		3, 0, 3, 1
+	};
+#pragma endregion
+
 	return true;
 }
 
 void GraphicsProjectApp::drawOBJMesh(aie::ShaderProgram& shader, const GraphicsProjectApp::MeshObject& obj, const glm::mat4& projMatrix, const glm::mat4& viewMatrix)
 {
+	shader.bind();
+
 	//bind the PVM
 	glm::mat4 pvm = projMatrix * viewMatrix * obj.transform;
 	shader.bindUniform("ProjectionViewModel", pvm);
@@ -260,21 +258,9 @@ void GraphicsProjectApp::drawOBJMesh(aie::ShaderProgram& shader, const GraphicsP
 
 void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
-#pragma region Quad
-	simpleShader.bind();
-	//bind mesh transform (projection view matrix)
-	auto pvm = projectionMatrix * viewMatrix * quadTransform;
-	simpleShader.bindUniform("ProjectionViewModel", pvm);
-
-	quadMesh.draw();
-#pragma endregion
-
-
-	//setup phong shader
-#pragma region Phong
-	//bind the shader
+	//setup shaders
+#pragma region PhongShader
 	phongShader.bind();
-
 	//bind camera position
 	phongShader.bindUniform("CameraPosition", glm::vec3(glm::inverse(viewMatrix)[3]));
 
@@ -283,18 +269,45 @@ void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat
 	phongShader.bindUniform("LightColor", light.color);
 	phongShader.bindUniform("LightDirection", light.direction);
 #pragma endregion
+#pragma region NormalMapShader
+	normalMapShader.bind();
+	//bind camera position
+	normalMapShader.bindUniform("CameraPosition", glm::vec3(glm::inverse(viewMatrix)[3]));
 
-	//draw each object using the phong shader
+	//bind lighting
+	normalMapShader.bindUniform("AmbientColor", ambientLight);
+	normalMapShader.bindUniform("LightColor", light.color);
+	normalMapShader.bindUniform("LightDirection", light.direction);
+#pragma endregion
+
+
+#pragma region Quad
+	textureShader.bind();
+
+	//bind mesh transform (projection view matrix)
+	auto pvm = projectionMatrix * viewMatrix * quadTransform;
+	textureShader.bindUniform("ProjectionViewModel", pvm);
+
+	//bind the texture to location 0
+	textureShader.bindUniform("diffuseTexture", 0);
+	//bind the texture to the location
+	gridTexture.bind(0);
+
+	quadMesh.draw();
+#pragma endregion
+
+	//draw each object
 	drawOBJMesh(phongShader, bunny, projectionMatrix, viewMatrix);
 	drawOBJMesh(phongShader, buddha, projectionMatrix, viewMatrix);
 	drawOBJMesh(phongShader, dragon, projectionMatrix, viewMatrix);
 	drawOBJMesh(phongShader, lucy, projectionMatrix, viewMatrix);
+	drawOBJMesh(normalMapShader, soulSpear, projectionMatrix, viewMatrix);
 }
 
 
 void GraphicsProjectApp::IMGUI_Logic()
 {
-	ImGui::Begin("Tool");
+	ImGui::Begin("Editor");
 
 	ImGui::Text("Lighting");
 	ImGui::Indent(25.f);
@@ -302,53 +315,27 @@ void GraphicsProjectApp::IMGUI_Logic()
 	ImGui::ColorEdit3("Sunlight Color", &light.color[0]);
 	ImGui::Unindent(25.f);
 
-	ImGui::Spacing();
-	ImGui::Text("Bunny");
-	ImGui::Indent(25.f);
-	ImGui::DragFloat3("Bunny Position", &(bunny.transform[3])[0], 0.25f);
-	ImGui::ColorEdit3("Bunny Ambient Color", &bunny.material->ambient[0]);
-	ImGui::ColorEdit3("Bunny Diffuse Color", &bunny.material->diffuse[0]);
-	ImGui::ColorEdit3("Bunny Specular Color", &bunny.material->specular[0]);
-	ImGui::ColorEdit3("Bunny Emission Color", &bunny.material->emissive[0]);
-	ImGui::SliderFloat("Bunny Visibility", &bunny.material->opacity, 0, 1);
-	ImGui::DragFloat("Bunny Specular Power", &bunny.material->specularPower, 1, 1, 100);
-	ImGui::Unindent(25.f);
-
-	ImGui::Spacing();
-	ImGui::Text("Buddha");
-	ImGui::Indent(25.f);
-	ImGui::DragFloat3("Buddha Position", &(buddha.transform[3])[0], 0.25f);
-	ImGui::ColorEdit3("Buddha Ambient Color", &buddha.material->ambient[0]);
-	ImGui::ColorEdit3("Buddha Diffuse Color", &buddha.material->diffuse[0]);
-	ImGui::ColorEdit3("Buddha Specular Color", &buddha.material->specular[0]);
-	ImGui::ColorEdit3("Buddha Emission Color", &buddha.material->emissive[0]);
-	ImGui::SliderFloat("Buddha Visibility", &buddha.material->opacity, 0, 1);
-	ImGui::DragFloat("Buddha Specular Power", &buddha.material->specularPower, 1, 1, 100);
-	ImGui::Unindent(25.f);
-
-	ImGui::Spacing();
-	ImGui::Text("Dragon");
-	ImGui::Indent(25.f);
-	ImGui::DragFloat3("Dragon Position", &(dragon.transform[3])[0], 0.25f);
-	ImGui::ColorEdit3("Dragon Ambient Color", &dragon.material->ambient[0]);
-	ImGui::ColorEdit3("Dragon Diffuse Color", &dragon.material->diffuse[0]);
-	ImGui::ColorEdit3("Dragon Specular Color", &dragon.material->specular[0]);
-	ImGui::ColorEdit3("Dragon Emission Color", &dragon.material->emissive[0]);
-	ImGui::SliderFloat("Dragon Visibility", &dragon.material->opacity, 0, 1);
-	ImGui::DragFloat("Dragon Specular Power", &dragon.material->specularPower, 1, 1, 100);
-	ImGui::Unindent(25.f);
-
-	ImGui::Spacing();
-	ImGui::Text("Lucy");
-	ImGui::Indent(25.f);
-	ImGui::DragFloat3("Lucy Position", &(lucy.transform[3])[0], 0.25f);
-	ImGui::ColorEdit3("Lucy Ambient Color", &lucy.material->ambient[0]);
-	ImGui::ColorEdit3("Lucy Diffuse Color", &lucy.material->diffuse[0]);
-	ImGui::ColorEdit3("Lucy Specular Color", &lucy.material->specular[0]);
-	ImGui::ColorEdit3("Lucy Emission Color", &lucy.material->emissive[0]);
-	ImGui::SliderFloat("Lucy Visibility", &lucy.material->opacity, 0, 1);
-	ImGui::DragFloat("Lucy Specular Power", &lucy.material->specularPower, 1, 1, 100);
-	ImGui::Unindent(25.f);
+	//create tools for editing mesh objects
+	imguiObjectTool("Bunny", bunny);
+	imguiObjectTool("Buddha", buddha);
+	imguiObjectTool("Dragon", dragon);
+	imguiObjectTool("Lucy", lucy);
+	imguiObjectTool("Soul Spear", soulSpear);
 
 	ImGui::End();
+}
+
+void GraphicsProjectApp::imguiObjectTool(std::string name, MeshObject& obj)
+{
+	ImGui::Spacing();
+	ImGui::Text(name.c_str());
+	ImGui::Indent(25.f);
+	ImGui::DragFloat3((name + " Position").c_str(), &(obj.transform[3])[0], 0.25f);
+	ImGui::ColorEdit3((name + " Ambient Color").c_str(), &obj.material->ambient[0]);
+	ImGui::ColorEdit3((name + " Diffuse Color").c_str(), &obj.material->diffuse[0]);
+	ImGui::ColorEdit3((name + " Specular Color").c_str(), &obj.material->specular[0]);
+	ImGui::ColorEdit3((name + " Emission Color").c_str(), &obj.material->emissive[0]);
+	ImGui::SliderFloat((name + " Visibility").c_str(), &obj.material->opacity, 0, 1);
+	ImGui::DragFloat((name + " Specular Power").c_str(), &obj.material->specularPower, 1, 1, 100);
+	ImGui::Unindent(25.f);
 }

@@ -33,23 +33,29 @@ protected:
 	};
 	void drawOBJMesh(aie::ShaderProgram& shader, const MeshObject& obj, const glm::mat4& projMatrix, const glm::mat4& viewMatrix);
 
+	void imguiObjectTool(std::string name, MeshObject& obj);
+
 
 	Camera camera[2];
 	//which camera is active?
 	unsigned int cameraIndex;
 
+
 	//shaders
-	aie::ShaderProgram simpleShader;
 	aie::ShaderProgram phongShader;
+	aie::ShaderProgram textureShader;
+	aie::ShaderProgram normalMapShader;
 
 	//square
 	Mesh quadMesh;
 	glm::mat4 quadTransform;
+	aie::Texture gridTexture;
 	//mesh objects
 	MeshObject bunny;
 	MeshObject buddha;
 	MeshObject dragon;
 	MeshObject lucy;
+	MeshObject soulSpear;
 
 
 	struct Light
