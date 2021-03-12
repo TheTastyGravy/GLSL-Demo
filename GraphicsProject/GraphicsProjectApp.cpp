@@ -22,7 +22,9 @@ bool GraphicsProjectApp::startup()
 	// initialise gizmo primitive counts
 	aie::Gizmos::create(10000, 10000, 10000, 10000);
 
-	light.color = { 0.8f, 0.8f, 0.8f };
+	lights.push_back({ glm::vec3(1, 0, 0), glm::vec3(0.8f, 0.8f, 0.8f) });
+	lights.push_back({ glm::vec3(1, 0, 0), glm::vec3(1, 0, 0) });
+
 	ambientLight = { 0.25f, 0.25f, 0.25f };
 
 	return loadShaderAndMeshLogic();
@@ -43,7 +45,7 @@ void GraphicsProjectApp::update(float deltaTime)
 
 	//rotate light
 	float time = getTime();
-	light.direction = glm::normalize(glm::vec3(glm::cos(time * 2), glm::sin(time * 2), 0));
+	lights[0].direction = glm::normalize(glm::vec3(glm::cos(time * 2), glm::sin(time * 2), 0));
 
 	//update current camera
 	camera[cameraIndex].update(deltaTime);
@@ -243,12 +245,12 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 	return true;
 }
 
-void GraphicsProjectApp::drawOBJMesh(aie::ShaderProgram& shader, const GraphicsProjectApp::MeshObject& obj, const glm::mat4& projMatrix, const glm::mat4& viewMatrix)
+void GraphicsProjectApp::drawOBJMesh(aie::ShaderProgram& shader, const GraphicsProjectApp::MeshObject& obj, const glm::mat4& projViewMatrix)
 {
 	shader.bind();
 
 	//bind the PVM
-	glm::mat4 pvm = projMatrix * viewMatrix * obj.transform;
+	glm::mat4 pvm = projViewMatrix * obj.transform;
 	shader.bindUniform("ProjectionViewModel", pvm);
 	//bind the lighting transforms
 	shader.bindUniform("ModelMatrix", obj.transform);
@@ -258,26 +260,38 @@ void GraphicsProjectApp::drawOBJMesh(aie::ShaderProgram& shader, const GraphicsP
 
 void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
 {
+	//these values are always used multiplied together
+	glm::mat4 projViewMatrix = projectionMatrix * viewMatrix;
+	//lambda function to bind lights in a shader
+	auto bindLights = [this](aie::ShaderProgram& shader)
+	{
+		int lightCount = lights.size();
+		shader.bindUniform("LightCount", lightCount);
+
+		//add each light to the shader
+		for (int i = 0; i < lightCount; i++)
+		{
+			shader.bindUniform(("Lights[" + std::to_string(i) + "].Direction").c_str(), lights[i].direction);
+			shader.bindUniform(("Lights[" + std::to_string(i) + "].Color").c_str(), lights[i].color);
+		}
+	};
+
 	//setup shaders
 #pragma region PhongShader
 	phongShader.bind();
 	//bind camera position
 	phongShader.bindUniform("CameraPosition", glm::vec3(glm::inverse(viewMatrix)[3]));
-
 	//bind lighting
 	phongShader.bindUniform("AmbientColor", ambientLight);
-	phongShader.bindUniform("LightColor", light.color);
-	phongShader.bindUniform("LightDirection", light.direction);
+	bindLights(phongShader);
 #pragma endregion
 #pragma region NormalMapShader
 	normalMapShader.bind();
 	//bind camera position
 	normalMapShader.bindUniform("CameraPosition", glm::vec3(glm::inverse(viewMatrix)[3]));
-
 	//bind lighting
 	normalMapShader.bindUniform("AmbientColor", ambientLight);
-	normalMapShader.bindUniform("LightColor", light.color);
-	normalMapShader.bindUniform("LightDirection", light.direction);
+	bindLights(normalMapShader);
 #pragma endregion
 
 
@@ -285,7 +299,7 @@ void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat
 	textureShader.bind();
 
 	//bind mesh transform (projection view matrix)
-	auto pvm = projectionMatrix * viewMatrix * quadTransform;
+	auto pvm = projViewMatrix * quadTransform;
 	textureShader.bindUniform("ProjectionViewModel", pvm);
 
 	//bind the texture to location 0
@@ -297,31 +311,77 @@ void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat
 #pragma endregion
 
 	//draw each object
-	drawOBJMesh(phongShader, bunny, projectionMatrix, viewMatrix);
-	drawOBJMesh(phongShader, buddha, projectionMatrix, viewMatrix);
-	drawOBJMesh(phongShader, dragon, projectionMatrix, viewMatrix);
-	drawOBJMesh(phongShader, lucy, projectionMatrix, viewMatrix);
-	drawOBJMesh(normalMapShader, soulSpear, projectionMatrix, viewMatrix);
+	drawOBJMesh(phongShader, bunny, projViewMatrix);
+	drawOBJMesh(phongShader, buddha, projViewMatrix);
+	drawOBJMesh(phongShader, dragon, projViewMatrix);
+	drawOBJMesh(phongShader, lucy, projViewMatrix);
+	drawOBJMesh(normalMapShader, soulSpear, projViewMatrix);
 }
 
 
 void GraphicsProjectApp::IMGUI_Logic()
 {
-	ImGui::Begin("Editor");
+	ImGui::Begin("Lighting Editor");
+	ImGui::ColorEdit3("Ambient Light Color", &ambientLight[0]);
+	ImGui::Spacing();
 
-	ImGui::Text("Lighting");
-	ImGui::Indent(25.f);
-	ImGui::DragFloat3("Sunlight Direction", &light.direction[0], 0.1f, -1.f, 1.f);
-	ImGui::ColorEdit3("Sunlight Color", &light.color[0]);
-	ImGui::Unindent(25.f);
+	static int currentLight = 0;
+	//display light count
+	ImGui::Text(("Number of lights: " + std::to_string(lights.size())).c_str());
+	//buttons to create and delete lights
+	if (ImGui::Button("New Light", ImVec2(100, 20)))
+	{
+		//add light and set editor to it
+		lights.push_back(Light{ glm::vec3(1), glm::vec3(0) });
+		currentLight = lights.size() - 1;
+	}
+	if (currentLight != 0)
+	{
+		//delete button
+		if (ImGui::Button("Delete Current Light", ImVec2(200, 20)))
+		{
+			lights.erase(lights.begin() + currentLight);
+			//if the last light was removed, move down
+			if (currentLight == lights.size())
+			{
+				currentLight--;
+			}
+		}
+	}
 
+	ImGui::Text(("Current Light: " + std::to_string(currentLight + 1)).c_str());
+	ImGui::DragFloat3("Light Direction", &lights[currentLight].direction[0], 0.1f, -1.f, 1.f);
+	ImGui::ColorEdit3("Light Color", &lights[currentLight].color[0]);
+
+	//nav buttons
+	if (currentLight != 0)
+	{
+		if (ImGui::Button("Prev", ImVec2(50, 20)))
+		{
+			currentLight--;
+		}
+		//next button should be on the same line
+		ImGui::SameLine(0, 0);
+	}
+	if (currentLight != lights.size() - 1)
+	{
+		//move over from the prev button
+		ImGui::Indent(55);
+		if (ImGui::Button("Next", ImVec2(50, 20)))
+		{
+			currentLight++;
+		}
+	}
+	ImGui::End();
+	
+
+	ImGui::Begin("Object Editor");
 	//create tools for editing mesh objects
 	imguiObjectTool("Bunny", bunny);
 	imguiObjectTool("Buddha", buddha);
 	imguiObjectTool("Dragon", dragon);
 	imguiObjectTool("Lucy", lucy);
 	imguiObjectTool("Soul Spear", soulSpear);
-
 	ImGui::End();
 }
 

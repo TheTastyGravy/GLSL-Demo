@@ -2,6 +2,7 @@
 
 #include "Application.h"
 #include <glm/mat4x4.hpp>
+#include <vector>;
 #include "Mesh.h"
 #include "OBJMesh.h"
 #include "Shader.h"
@@ -31,7 +32,7 @@ protected:
 		glm::mat4 transform;
 		aie::OBJMesh::Material* material;
 	};
-	void drawOBJMesh(aie::ShaderProgram& shader, const MeshObject& obj, const glm::mat4& projMatrix, const glm::mat4& viewMatrix);
+	void drawOBJMesh(aie::ShaderProgram& shader, const MeshObject& obj, const glm::mat4& projViewMatrix);
 
 	void imguiObjectTool(std::string name, MeshObject& obj);
 
@@ -64,7 +65,6 @@ protected:
 		glm::vec3 color;
 	};
 
-	Light light;
+	std::vector<Light> lights;
 	glm::vec3 ambientLight;
-
 };
