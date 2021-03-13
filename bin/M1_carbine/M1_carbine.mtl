@@ -1,0 +1,12 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 17.11.2020 08:26:03
+
+newmtl M1_Carbine
+illum 2
+Ka 0.2000 0.2000 0.2000
+Kd 0.8000 0.8000 0.8000
+Ks 0.2000 0.2000 0.2000
+Ns 43.2193
+map_Kd M1_carbine_albedo.tga
+map_Ks M1_carbine_metalness.tga
+bump M1_carbine_normal.tga

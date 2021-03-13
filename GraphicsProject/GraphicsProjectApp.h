@@ -57,6 +57,8 @@ protected:
 	MeshObject dragon;
 	MeshObject lucy;
 	MeshObject soulSpear;
+	MeshObject M1Carbine;
+	MeshObject Gun;
 
 
 	struct Light

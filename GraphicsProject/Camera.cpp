@@ -57,7 +57,7 @@ void Camera::update(float deltaTime)
 	//get the current position of the mouse
 	float mX = input->getMouseX();
 	float mY = input->getMouseY();
-	const float turnSpeed = glm::radians(180.f);
+	const float turnSpeed = glm::radians(360.f);
 
 
 	//if the right button is down, increment the theta and phi

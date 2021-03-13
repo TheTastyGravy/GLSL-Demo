@@ -166,7 +166,7 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 		0.5f, 0, 0, 0,
 		0, 0.5f, 0, 0,
 		0, 0, 0.5f, 0,
-		-3, 0, 2, 1
+		-4, 0, 3, 1
 	};
 #pragma endregion
 
@@ -202,7 +202,7 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 		0.5f, 0, 0, 0,
 		0, 0.5f, 0, 0,
 		0, 0, 0.5f, 0,
-		0, 0, 0, 1
+		4, 0, 0, 1
 	};
 #pragma endregion
 
@@ -225,8 +225,8 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 #pragma endregion
 
 #pragma region SoulSpear
-	//check if can load lucy mesh
-	if (!soulSpear.mesh.load("./soulspear/soulspear.obj"))
+	//check if can load soul spear mesh
+	if (!soulSpear.mesh.load("./soulspear/soulspear.obj", true, true))
 	{
 		printf("SoulSpear mesh failed\n");
 		return false;
@@ -241,6 +241,25 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 		3, 0, 3, 1
 	};
 #pragma endregion
+
+#pragma region M1Carbine
+	//check if can m1 carbine lucy mesh
+	if (!M1Carbine.mesh.load("./M1_carbine/M1_carbine.obj", true, true))
+	{
+		printf("M1Carbine mesh failed\n");
+		return false;
+	}
+	M1Carbine.material = &M1Carbine.mesh.getMaterial(0);
+
+	M1Carbine.transform =
+	{
+		0.1f, 0, 0, 0,
+		0, 0.1f, 0, 0,
+		0, 0, 0.1f, 0,
+		0, 0, 0, 1
+	};
+#pragma endregion
+
 
 	return true;
 }
@@ -316,6 +335,7 @@ void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat
 	drawOBJMesh(phongShader, dragon, projViewMatrix);
 	drawOBJMesh(phongShader, lucy, projViewMatrix);
 	drawOBJMesh(normalMapShader, soulSpear, projViewMatrix);
+	drawOBJMesh(normalMapShader, M1Carbine, projViewMatrix);
 }
 
 
@@ -382,6 +402,7 @@ void GraphicsProjectApp::IMGUI_Logic()
 	imguiObjectTool("Dragon", dragon);
 	imguiObjectTool("Lucy", lucy);
 	imguiObjectTool("Soul Spear", soulSpear);
+	imguiObjectTool("M1 Carbine", M1Carbine);
 	ImGui::End();
 }
 
