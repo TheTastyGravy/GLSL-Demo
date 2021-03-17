@@ -22,8 +22,9 @@ bool GraphicsProjectApp::startup()
 	// initialise gizmo primitive counts
 	aie::Gizmos::create(10000, 10000, 10000, 10000);
 
-	lights.push_back({ glm::vec3(1, 0, 0), glm::vec3(0.8f, 0.8f, 0.8f) });
-	lights.push_back({ glm::vec3(1, 0, 0), glm::vec3(1, 0, 0) });
+	directionalLights.push_back({ glm::vec3(1, 0, 0), glm::vec3(0.8f, 0.8f, 0.8f) });
+	directionalLights.push_back({ glm::vec3(1, 0, 0), glm::vec3(1, 0, 0) });
+	pointLights.push_back({ glm::vec3(0), glm::vec3(0, 1, 0) });
 
 	ambientLight = { 0.25f, 0.25f, 0.25f };
 
@@ -45,7 +46,7 @@ void GraphicsProjectApp::update(float deltaTime)
 
 	//rotate light
 	float time = getTime();
-	lights[0].direction = glm::normalize(glm::vec3(glm::cos(time * 2), glm::sin(time * 2), 0));
+	directionalLights[0].direction = glm::normalize(glm::vec3(glm::cos(time * 2), glm::sin(time * 2), 0));
 
 	//update current camera
 	camera[cameraIndex].update(deltaTime);
@@ -69,7 +70,7 @@ void GraphicsProjectApp::update(float deltaTime)
 
 void GraphicsProjectApp::draw()
 {
-	// wipe the screen to the background colour
+	//clear the screen
 	clearScreen();
 	aie::Gizmos::clear();
 
@@ -77,23 +78,8 @@ void GraphicsProjectApp::draw()
 	glm::mat4 projectionMatrix = camera[cameraIndex].getProjectionMatrix(getWindowWidth(), getWindowHeight());
 	glm::mat4 viewMatrix = camera[cameraIndex].getViewMatrix();
 
-
-	// draw a simple grid with gizmos
-	glm::vec4 white(1);
-	glm::vec4 black(0, 0, 0, 1);
-	for (int i = 0; i < 21; ++i)
-	{
-		aie::Gizmos::addLine(glm::vec3(-10 + i, 0, 10),
-			glm::vec3(-10 + i, 0, -10),
-			i == 10 ? white : black);
-		aie::Gizmos::addLine(glm::vec3(10, 0, -10 + i),
-			glm::vec3(-10, 0, -10 + i),
-			i == 10 ? white : black);
-	}
-
-	// ----- DRAW -----
+	//draw
 	drawShaderAndMeshs(projectionMatrix, viewMatrix);
-
 	aie::Gizmos::draw(projectionMatrix * viewMatrix);
 }
 
@@ -284,14 +270,21 @@ void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat
 	//lambda function to bind lights in a shader
 	auto bindLights = [this](aie::ShaderProgram& shader)
 	{
-		int lightCount = lights.size();
-		shader.bindUniform("LightCount", lightCount);
+		int directionalLightCount = directionalLights.size();
+		shader.bindUniform("DirectionalLightCount", directionalLightCount);
+		int pointLightCount = pointLights.size();
+		shader.bindUniform("PointLightCount", pointLightCount);
 
 		//add each light to the shader
-		for (int i = 0; i < lightCount; i++)
+		for (int i = 0; i < directionalLightCount; i++)
 		{
-			shader.bindUniform(("Lights[" + std::to_string(i) + "].Direction").c_str(), lights[i].direction);
-			shader.bindUniform(("Lights[" + std::to_string(i) + "].Color").c_str(), lights[i].color);
+			shader.bindUniform(("DirectionalLights[" + std::to_string(i) + "].Direction").c_str(), directionalLights[i].direction);
+			shader.bindUniform(("DirectionalLights[" + std::to_string(i) + "].Color").c_str(), directionalLights[i].color);
+		}
+		for (int i = 0; i < pointLightCount; i++)
+		{
+			shader.bindUniform(("PointLights[" + std::to_string(i) + "].Position").c_str(), pointLights[i].position);
+			shader.bindUniform(("PointLights[" + std::to_string(i) + "].Color").c_str(), pointLights[i].color);
 		}
 	};
 
@@ -347,22 +340,22 @@ void GraphicsProjectApp::IMGUI_Logic()
 
 	static int currentLight = 0;
 	//display light count
-	ImGui::Text(("Number of lights: " + std::to_string(lights.size())).c_str());
+	ImGui::Text(("Number of lights: " + std::to_string(directionalLights.size())).c_str());
 	//buttons to create and delete lights
 	if (ImGui::Button("New Light", ImVec2(100, 20)))
 	{
 		//add light and set editor to it
-		lights.push_back(Light{ glm::vec3(1), glm::vec3(0) });
-		currentLight = lights.size() - 1;
+		directionalLights.push_back(DirectionalLight{ glm::vec3(1), glm::vec3(0) });
+		currentLight = directionalLights.size() - 1;
 	}
 	if (currentLight != 0)
 	{
 		//delete button
 		if (ImGui::Button("Delete Current Light", ImVec2(200, 20)))
 		{
-			lights.erase(lights.begin() + currentLight);
+			directionalLights.erase(directionalLights.begin() + currentLight);
 			//if the last light was removed, move down
-			if (currentLight == lights.size())
+			if (currentLight == directionalLights.size())
 			{
 				currentLight--;
 			}
@@ -370,8 +363,8 @@ void GraphicsProjectApp::IMGUI_Logic()
 	}
 
 	ImGui::Text(("Current Light: " + std::to_string(currentLight + 1)).c_str());
-	ImGui::DragFloat3("Light Direction", &lights[currentLight].direction[0], 0.1f, -1.f, 1.f);
-	ImGui::ColorEdit3("Light Color", &lights[currentLight].color[0]);
+	ImGui::DragFloat3("Light Direction", &directionalLights[currentLight].direction[0], 0.1f, -1.f, 1.f);
+	ImGui::ColorEdit3("Light Color", &directionalLights[currentLight].color[0]);
 
 	//nav buttons
 	if (currentLight != 0)
@@ -383,7 +376,7 @@ void GraphicsProjectApp::IMGUI_Logic()
 		//next button should be on the same line
 		ImGui::SameLine(0, 0);
 	}
-	if (currentLight != lights.size() - 1)
+	if (currentLight != directionalLights.size() - 1)
 	{
 		//move over from the prev button
 		ImGui::Indent(55);
@@ -406,6 +399,7 @@ void GraphicsProjectApp::IMGUI_Logic()
 	ImGui::End();
 }
 
+// Create ImGui components to edit 'obj'
 void GraphicsProjectApp::imguiObjectTool(std::string name, MeshObject& obj)
 {
 	ImGui::Spacing();

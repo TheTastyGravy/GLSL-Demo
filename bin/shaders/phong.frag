@@ -11,7 +11,7 @@ uniform vec3 Ke;    //emissive color
 uniform float Ns;   //specular power
 uniform float opacity;
 
-struct Light
+struct DirectionalLight
 {
     vec3 Direction;
     vec3 Color;
@@ -19,8 +19,8 @@ struct Light
 //lighting
 uniform vec3 AmbientColor;
 #define MAX_LIGHTS 16
-uniform int LightCount;
-uniform Light Lights[MAX_LIGHTS];
+uniform int DirectionalLightCount;
+uniform DirectionalLight DirectionalLights[MAX_LIGHTS];
 
 //used for specular
 uniform vec3 CameraPosition;
@@ -34,27 +34,27 @@ void main()
     vec3 N = normalize(vNormal);
     //normalize light directions
     vec3 L[MAX_LIGHTS];
-    for (int i = 0; i < LightCount; i++)
+    for (int i = 0; i < DirectionalLightCount; i++)
     {
-        L[i] = normalize(Lights[i].Direction);
+        L[i] = normalize(DirectionalLights[i].Direction);
     }
 
     //find view and reflection vectors
     vec3 V = normalize(CameraPosition - vPosition.xyz);
     vec3 R[MAX_LIGHTS];
-    for (int i = 0; i < LightCount; i++)
+    for (int i = 0; i < DirectionalLightCount; i++)
     {
         R[i] = reflect(L[i], N);
     }
 
     vec3 lambertColor = vec3(0);
     vec3 specularColor = vec3(0);
-    for (int i = 0; i < LightCount; i++)
+    for (int i = 0; i < DirectionalLightCount; i++)
     {
         //lambert term * light color
-        lambertColor += max(0, min(1, dot(N, -L[i]))) * Lights[i].Color;
+        lambertColor += max(0, min(1, dot(N, -L[i]))) * DirectionalLights[i].Color;
         //specular term * light color
-        specularColor += pow(max(0, dot(R[i], V)), Ns) * Lights[i].Color;
+        specularColor += pow(max(0, dot(R[i], V)), Ns) * DirectionalLights[i].Color;
     }
 
 

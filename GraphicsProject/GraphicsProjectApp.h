@@ -61,12 +61,18 @@ protected:
 	MeshObject Gun;
 
 
-	struct Light
+	struct DirectionalLight
 	{
 		glm::vec3 direction;
 		glm::vec3 color;
 	};
+	struct PointLight
+	{
+		glm::vec3 position;
+		glm::vec3 color;
+	};
 
-	std::vector<Light> lights;
+	std::vector<DirectionalLight> directionalLights;
+	std::vector<PointLight> pointLights;
 	glm::vec3 ambientLight;
 };
