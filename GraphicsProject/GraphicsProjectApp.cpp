@@ -4,11 +4,14 @@
 #include <imgui.h>
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
+#include "Shader.h"
+#include "Instance.h"
+
+#include <iostream>
 
 
 GraphicsProjectApp::GraphicsProjectApp()
 {
-	cameraIndex = 0;
 }
 
 GraphicsProjectApp::~GraphicsProjectApp()
@@ -19,21 +22,28 @@ bool GraphicsProjectApp::startup()
 {
 	setBackgroundColour(0.25f, 0.25f, 0.25f);
 
-	// initialise gizmo primitive counts
+	//initialise gizmo primitive counts
 	aie::Gizmos::create(10000, 10000, 10000, 10000);
 
-	directionalLights.push_back({ glm::vec3(1, 0, 0), glm::vec3(0.8f, 0.8f, 0.8f) });
-	directionalLights.push_back({ glm::vec3(1, 0, 0), glm::vec3(1, 0, 0) });
-	pointLights.push_back({ glm::vec3(0), glm::vec3(0, 1, 0) });
 
-	ambientLight = { 0.25f, 0.25f, 0.25f };
+	//create new camera
+	camera = new Camera();
+	//create new scene
+	scene = new Scene(camera, glm::vec2(getWindowWidth(), getWindowHeight()), glm::vec3(.5f));
+	//add lights
+	scene->addLight(new DirectionalLight(glm::vec3(1, 0, 0), glm::vec3(1)));
+	scene->addLight(new PointLight(glm::vec3(0), glm::vec3(1, 0, 0)));
 
+	
+	//create mesh objects
 	return loadShaderAndMeshLogic();
 }
 
 void GraphicsProjectApp::shutdown()
 {
 	aie::Gizmos::destroy();
+	delete scene;
+	delete camera;
 }
 
 
@@ -46,22 +56,13 @@ void GraphicsProjectApp::update(float deltaTime)
 
 	//rotate light
 	float time = getTime();
-	directionalLights[0].direction = glm::normalize(glm::vec3(glm::cos(time * 2), glm::sin(time * 2), 0));
+	scene->getDirectionalLights()[0]->direction = glm::normalize(glm::vec3(glm::cos(time * 2), 0, glm::sin(time * 2)));
 
 	//update current camera
-	camera[cameraIndex].update(deltaTime);
-	//swap camera with numbers
-	if (input->wasKeyPressed(aie::INPUT_KEY_1))
-	{
-		cameraIndex = 0;
-	}
-	if (input->wasKeyPressed(aie::INPUT_KEY_2))
-	{
-		cameraIndex = 1;
-	}
+	camera->update(deltaTime);
 	
 
-	// quit if we press escape
+	//quit on escape
 	if (input->isKeyDown(aie::INPUT_KEY_ESCAPE))
 	{
 		quit();
@@ -75,337 +76,249 @@ void GraphicsProjectApp::draw()
 	aie::Gizmos::clear();
 
 	//get camera matrices
-	glm::mat4 projectionMatrix = camera[cameraIndex].getProjectionMatrix(getWindowWidth(), getWindowHeight());
-	glm::mat4 viewMatrix = camera[cameraIndex].getViewMatrix();
+	glm::mat4 projectionMatrix = camera->getProjectionMatrix(getWindowWidth(), getWindowHeight());
+	glm::mat4 viewMatrix = camera->getViewMatrix();
+
+
+	//draw gizmo for point lights
+	for (auto pointLight : scene->getPointLights())
+	{
+		aie::Gizmos::addSphere(pointLight->position, 0.2f, 6, 6, glm::vec4(pointLight->color, 1));
+	}
 
 	//draw
-	drawShaderAndMeshs(projectionMatrix, viewMatrix);
+	scene->draw();
 	aie::Gizmos::draw(projectionMatrix * viewMatrix);
 }
 
 
 bool GraphicsProjectApp::loadShaderAndMeshLogic()
 {
-	//load shaders
-#pragma region Shaders
-	//phong shader
-	phongShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/phong.vert");
-	phongShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/phong.frag");
-	if (!phongShader.link())
-	{
-		printf("Phong shader has an error: %s\n", phongShader.getLastError());
-		return false;
-	}
-
-	//texture shader
-	textureShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/textured.vert");
-	textureShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/textured.frag");
-	if (!textureShader.link())
-	{
-		printf("Texture shader has an error: %s\n", textureShader.getLastError());
-		return false;
-	}
-
-	//normal map shader
-	normalMapShader.loadShader(aie::eShaderStage::VERTEX, "./shaders/normalMap.vert");
-	normalMapShader.loadShader(aie::eShaderStage::FRAGMENT, "./shaders/normalMap.frag");
-	if (!normalMapShader.link())
-	{
-		printf("Normal map shader has an error: %s\n", normalMapShader.getLastError());
-		return false;
-	}
-#pragma endregion
-
-
-#pragma region Quad
-	quadMesh.initialiseQuad();
-
-	//load texture
-	if (!gridTexture.load("./textures/numbered_grid.tga"))
-	{
-		printf("Failed to load: numbered_grid.tga\n");
-		return false;
-	}
-
-	//make the quad 10x10 units
-	quadTransform =
-	{
-		10, 0, 0, 0,
-		0, 10, 0, 0,
-		0, 0, 10, 0,
-		0, 0, 0, 1
-	};
-#pragma endregion
-
-
-#pragma region Bunny
-	//check if can load bunny mesh
+#pragma region Meshes
+	//load bunny mesh
 	if (!bunny.mesh.load("./stanford/bunny.obj"))
 	{
 		printf("Bunny mesh failed\n");
 		return false;
 	}
 	bunny.material = &bunny.mesh.getMaterial(0);
-
-	bunny.transform =
-	{
-		0.5f, 0, 0, 0,
-		0, 0.5f, 0, 0,
-		0, 0, 0.5f, 0,
-		-4, 0, 3, 1
-	};
-#pragma endregion
-
-#pragma region Buddha
-	//check if can load buddha mesh
-	if (!buddha.mesh.load("./stanford/buddha.obj"))
-	{
-		printf("Buddha mesh failed\n");
-		return false;
-	}
-	buddha.material = &buddha.mesh.getMaterial(0);
-
-	buddha.transform =
-	{
-		0.5f, 0, 0, 0,
-		0, 0.5f, 0, 0,
-		0, 0, 0.5f, 0,
-		-2, 0, -3, 1
-	};
-#pragma endregion
-
-#pragma region Dragon
-	//check if can load dragon mesh
-	if (!dragon.mesh.load("./stanford/dragon.obj"))
-	{
-		printf("Dragon mesh failed\n");
-		return false;
-	}
-	dragon.material = &dragon.mesh.getMaterial(0);
-
-	dragon.transform =
-	{
-		0.5f, 0, 0, 0,
-		0, 0.5f, 0, 0,
-		0, 0, 0.5f, 0,
-		4, 0, 0, 1
-	};
-#pragma endregion
-
-#pragma region Lucy
-	//check if can load lucy mesh
-	if (!lucy.mesh.load("./stanford/lucy.obj"))
-	{
-		printf("Lucy mesh failed\n");
-		return false;
-	}
-	lucy.material = &lucy.mesh.getMaterial(0);
-
-	lucy.transform =
-	{
-		0.5f, 0, 0, 0,
-		0, 0.5f, 0, 0,
-		0, 0, 0.5f, 0,
-		2, 0, -3, 1
-	};
-#pragma endregion
-
-#pragma region SoulSpear
-	//check if can load soul spear mesh
+	//load soul spear mesh
 	if (!soulSpear.mesh.load("./soulspear/soulspear.obj", true, true))
 	{
 		printf("SoulSpear mesh failed\n");
 		return false;
 	}
 	soulSpear.material = &soulSpear.mesh.getMaterial(0);
-
-	soulSpear.transform =
-	{
-		0.5f, 0, 0, 0,
-		0, 0.5f, 0, 0,
-		0, 0, 0.5f, 0,
-		3, 0, 3, 1
-	};
-#pragma endregion
-
-#pragma region M1Carbine
-	//check if can m1 carbine lucy mesh
-	if (!M1Carbine.mesh.load("./M1_carbine/M1_carbine.obj", true, true))
+	//load m1 carbine mesh
+	if (!m1Carbine.mesh.load("./M1_carbine/M1_carbine.obj", true, true))
 	{
 		printf("M1Carbine mesh failed\n");
 		return false;
 	}
-	M1Carbine.material = &M1Carbine.mesh.getMaterial(0);
-
-	M1Carbine.transform =
-	{
-		0.1f, 0, 0, 0,
-		0, 0.1f, 0, 0,
-		0, 0, 0.1f, 0,
-		0, 0, 0, 1
-	};
+	m1Carbine.material = &m1Carbine.mesh.getMaterial(0);
 #pragma endregion
 
+#pragma region Shaders
+	//phong shader
+	aie::ShaderProgram* phongShader = new aie::ShaderProgram();
+	phongShader->loadShader(aie::eShaderStage::VERTEX, "./shaders/phong.vert");
+	phongShader->loadShader(aie::eShaderStage::FRAGMENT, "./shaders/phong.frag");
+	if (!phongShader->link())
+	{
+		printf("Phong shader has an error: %s\n", phongShader->getLastError());
+		return false;
+	}
+	//normal map shader
+	aie::ShaderProgram* normalShader = new aie::ShaderProgram();
+	normalShader->loadShader(aie::eShaderStage::VERTEX, "./shaders/normalMap.vert");
+	normalShader->loadShader(aie::eShaderStage::FRAGMENT, "./shaders/normalMap.frag");
+	if (!normalShader->link())
+	{
+		printf("Normal map shader has an error: %s\n", normalShader->getLastError());
+		return false;
+	}
+#pragma endregion
+
+	Instance* instance;
+	//add soul spears
+	for (int i = 0; i < 10; i++)
+	{
+		instance = new Instance(glm::vec3(i * 2, 0, 0), glm::vec3(0, i * 30, 0), glm::vec3(1), &soulSpear.mesh, normalShader);
+		transforms.push_back({ "Soul Spear " + std::to_string(i), instance->getTransform() });
+		scene->addInstance(instance);
+	}
+
+	//add m1carbine
+	instance = new Instance(glm::vec3(-2, 0, 0), glm::vec3(0, 90, 0), glm::vec3(.1f), &m1Carbine.mesh, normalShader);
+	transforms.push_back({ "M1 Carbine", instance->getTransform() });
+	scene->addInstance(instance);
+	//add bunny
+	instance = new Instance(glm::vec3(0, 0, 3), glm::vec3(0, 0, 0), glm::vec3(.2f), &bunny.mesh, phongShader);
+	transforms.push_back({ "Bunny", instance->getTransform() });
+	scene->addInstance(instance);
+
+	Transform trans = transforms[0];
+	for (int i = 0; i < 4; i++)
+	{
+		for (int j = 0; j < 4; j++)
+		{
+			std::cout << std::to_string(i) + " " + std::to_string(j) + "   " + std::to_string(trans.transform[i][j]) + "\n";
+		}
+	}
 
 	return true;
-}
-
-void GraphicsProjectApp::drawOBJMesh(aie::ShaderProgram& shader, const GraphicsProjectApp::MeshObject& obj, const glm::mat4& projViewMatrix)
-{
-	shader.bind();
-
-	//bind the PVM
-	glm::mat4 pvm = projViewMatrix * obj.transform;
-	shader.bindUniform("ProjectionViewModel", pvm);
-	//bind the lighting transforms
-	shader.bindUniform("ModelMatrix", obj.transform);
-
-	obj.mesh.draw();
-}
-
-void GraphicsProjectApp::drawShaderAndMeshs(glm::mat4 projectionMatrix, glm::mat4 viewMatrix)
-{
-	//these values are always used multiplied together
-	glm::mat4 projViewMatrix = projectionMatrix * viewMatrix;
-	//lambda function to bind lights in a shader
-	auto bindLights = [this](aie::ShaderProgram& shader)
-	{
-		int directionalLightCount = directionalLights.size();
-		shader.bindUniform("DirectionalLightCount", directionalLightCount);
-		int pointLightCount = pointLights.size();
-		shader.bindUniform("PointLightCount", pointLightCount);
-
-		//add each light to the shader
-		for (int i = 0; i < directionalLightCount; i++)
-		{
-			shader.bindUniform(("DirectionalLights[" + std::to_string(i) + "].Direction").c_str(), directionalLights[i].direction);
-			shader.bindUniform(("DirectionalLights[" + std::to_string(i) + "].Color").c_str(), directionalLights[i].color);
-		}
-		for (int i = 0; i < pointLightCount; i++)
-		{
-			shader.bindUniform(("PointLights[" + std::to_string(i) + "].Position").c_str(), pointLights[i].position);
-			shader.bindUniform(("PointLights[" + std::to_string(i) + "].Color").c_str(), pointLights[i].color);
-		}
-	};
-
-	//setup shaders
-#pragma region PhongShader
-	phongShader.bind();
-	//bind camera position
-	phongShader.bindUniform("CameraPosition", glm::vec3(glm::inverse(viewMatrix)[3]));
-	//bind lighting
-	phongShader.bindUniform("AmbientColor", ambientLight);
-	bindLights(phongShader);
-#pragma endregion
-#pragma region NormalMapShader
-	normalMapShader.bind();
-	//bind camera position
-	normalMapShader.bindUniform("CameraPosition", glm::vec3(glm::inverse(viewMatrix)[3]));
-	//bind lighting
-	normalMapShader.bindUniform("AmbientColor", ambientLight);
-	bindLights(normalMapShader);
-#pragma endregion
-
-
-#pragma region Quad
-	textureShader.bind();
-
-	//bind mesh transform (projection view matrix)
-	auto pvm = projViewMatrix * quadTransform;
-	textureShader.bindUniform("ProjectionViewModel", pvm);
-
-	//bind the texture to location 0
-	textureShader.bindUniform("diffuseTexture", 0);
-	//bind the texture to the location
-	gridTexture.bind(0);
-
-	quadMesh.draw();
-#pragma endregion
-
-	//draw each object
-	drawOBJMesh(phongShader, bunny, projViewMatrix);
-	drawOBJMesh(phongShader, buddha, projViewMatrix);
-	drawOBJMesh(phongShader, dragon, projViewMatrix);
-	drawOBJMesh(phongShader, lucy, projViewMatrix);
-	drawOBJMesh(normalMapShader, soulSpear, projViewMatrix);
-	drawOBJMesh(normalMapShader, M1Carbine, projViewMatrix);
 }
 
 
 void GraphicsProjectApp::IMGUI_Logic()
 {
 	ImGui::Begin("Lighting Editor");
-	ImGui::ColorEdit3("Ambient Light Color", &ambientLight[0]);
-	ImGui::Spacing();
+	//ambient light
+	ImGui::ColorEdit3("Ambient Light Color", &scene->getAmbientLight()[0]);
+	ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+	
 
-	static int currentLight = 0;
+	//	----- DIRECTIONAL LIGHT -----
+	std::vector<DirectionalLight*>& directionalLights = scene->getDirectionalLights();
+	static int currentDirLight = 0;
 	//display light count
-	ImGui::Text(("Number of lights: " + std::to_string(directionalLights.size())).c_str());
+	ImGui::Text(("Number of directional lights: " + std::to_string(directionalLights.size())).c_str());
 	//buttons to create and delete lights
-	if (ImGui::Button("New Light", ImVec2(100, 20)))
+	if (ImGui::Button("New Dir Light", ImVec2(150, 20)))
 	{
 		//add light and set editor to it
-		directionalLights.push_back(DirectionalLight{ glm::vec3(1), glm::vec3(0) });
-		currentLight = directionalLights.size() - 1;
+		directionalLights.push_back(new DirectionalLight(glm::vec3(1), glm::vec3(0)));
+		currentDirLight = directionalLights.size() - 1;
 	}
-	if (currentLight != 0)
+	if (currentDirLight != 0)
 	{
 		//delete button
-		if (ImGui::Button("Delete Current Light", ImVec2(200, 20)))
+		if (ImGui::Button("Delete Current Dir Light", ImVec2(220, 20)))
 		{
-			directionalLights.erase(directionalLights.begin() + currentLight);
+			directionalLights.erase(directionalLights.begin() + currentDirLight);
 			//if the last light was removed, move down
-			if (currentLight == directionalLights.size())
+			if (currentDirLight == directionalLights.size())
 			{
-				currentLight--;
+				currentDirLight--;
 			}
 		}
 	}
 
-	ImGui::Text(("Current Light: " + std::to_string(currentLight + 1)).c_str());
-	ImGui::DragFloat3("Light Direction", &directionalLights[currentLight].direction[0], 0.1f, -1.f, 1.f);
-	ImGui::ColorEdit3("Light Color", &directionalLights[currentLight].color[0]);
-
+	//light editer
+	ImGui::Text(("Current Dir Light: " + std::to_string(currentDirLight + 1)).c_str());
+	ImGui::DragFloat3("Dir Light Direction", &directionalLights[currentDirLight]->direction[0], 0.1f, -1.f, 1.f);
+	ImGui::ColorEdit3("Dir Light Color", &directionalLights[currentDirLight]->color[0]);
 	//nav buttons
-	if (currentLight != 0)
+	if (currentDirLight != 0)
 	{
-		if (ImGui::Button("Prev", ImVec2(50, 20)))
+		if (ImGui::Button("Prev Dir", ImVec2(100, 20)))
 		{
-			currentLight--;
+			currentDirLight--;
 		}
 		//next button should be on the same line
 		ImGui::SameLine(0, 0);
 	}
-	if (currentLight != directionalLights.size() - 1)
+	if (currentDirLight != directionalLights.size() - 1)
 	{
 		//move over from the prev button
-		ImGui::Indent(55);
-		if (ImGui::Button("Next", ImVec2(50, 20)))
+		ImGui::Indent(110);
+		if (ImGui::Button("Next Dir", ImVec2(100, 20)))
 		{
-			currentLight++;
+			currentDirLight++;
+		}
+		ImGui::Unindent(110);
+	}
+
+
+	ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+	
+	//	----- POINT LIGHT -----
+	std::vector<PointLight*>& pointLights = scene->getPointLights();
+	static int currentPointLight = 0;
+	//display light count
+	ImGui::Text(("Number of point lights: " + std::to_string(pointLights.size())).c_str());
+	//buttons to create and delete lights
+	if (ImGui::Button("New Point Light", ImVec2(150, 20)))
+	{
+		//add light and set editor to it
+		pointLights.push_back(new PointLight(glm::vec3(0), glm::vec3(0)));
+		currentPointLight = pointLights.size() - 1;
+	}
+	if (currentPointLight != 0)
+	{
+		//delete button
+		if (ImGui::Button("Delete Current Point Light", ImVec2(220, 20)))
+		{
+			pointLights.erase(pointLights.begin() + currentPointLight);
+			//if the last light was removed, move down
+			if (currentPointLight == pointLights.size())
+			{
+				currentPointLight--;
+			}
 		}
 	}
+
+	//light editor
+	ImGui::Text(("Current Point Light: " + std::to_string(currentPointLight + 1)).c_str());
+	ImGui::DragFloat3("Point Light Position", &pointLights[currentPointLight]->position[0], 0.25f);
+	ImGui::ColorEdit3("Point Light Color", &pointLights[currentPointLight]->color[0]);
+	//nav buttons
+	if (currentPointLight != 0)
+		{
+			if (ImGui::Button("Prev Point", ImVec2(100, 20)))
+			{
+				currentPointLight--;
+			}
+			//next button should be on the same line
+			ImGui::SameLine(0, 0);
+		}
+	if (currentPointLight != pointLights.size() - 1)
+		{
+			//move over from the prev button
+			ImGui::Indent(110);
+			if (ImGui::Button("Next Point", ImVec2(100, 20)))
+			{
+				currentPointLight++;
+			}
+			ImGui::Unindent(110);
+		}
+	
 	ImGui::End();
 	
 
-	ImGui::Begin("Object Editor");
-	//create tools for editing mesh objects
-	imguiObjectTool("Bunny", bunny);
-	imguiObjectTool("Buddha", buddha);
-	imguiObjectTool("Dragon", dragon);
-	imguiObjectTool("Lucy", lucy);
-	imguiObjectTool("Soul Spear", soulSpear);
-	imguiObjectTool("M1 Carbine", M1Carbine);
+	//create tools for editing materials
+	ImGui::Begin("Material Editor");
+	imguiMaterialTool("Bunny", bunny);
+	imguiMaterialTool("Soul Spear", soulSpear);
+	imguiMaterialTool("M1 Carbine", m1Carbine);
+	ImGui::End();
+
+
+	//create tools for editing each objects transform
+	ImGui::Begin("Transform Editor");
+
+	static int currentTransform = 0;
+	Transform trans = transforms[currentTransform];
+
+
+	ImGui::DragFloat3("Position", &(trans.transform[3])[0], 0.25f);
+
+	glm::vec3 scale = glm::vec3(trans.transform[0][0], trans.transform[1][1], trans.transform[2][2]);
+	ImGui::DragFloat3("Scale", &scale[0], 0.25f);
+	trans.transform[0][0] = scale.x;
+	trans.transform[1][1] = scale.y;
+	trans.transform[2][2] = scale.z;
+
+
 	ImGui::End();
 }
 
 // Create ImGui components to edit 'obj'
-void GraphicsProjectApp::imguiObjectTool(std::string name, MeshObject& obj)
+void GraphicsProjectApp::imguiMaterialTool(std::string name, MeshObject& obj)
 {
 	ImGui::Spacing();
 	ImGui::Text(name.c_str());
 	ImGui::Indent(25.f);
-	ImGui::DragFloat3((name + " Position").c_str(), &(obj.transform[3])[0], 0.25f);
 	ImGui::ColorEdit3((name + " Ambient Color").c_str(), &obj.material->ambient[0]);
 	ImGui::ColorEdit3((name + " Diffuse Color").c_str(), &obj.material->diffuse[0]);
 	ImGui::ColorEdit3((name + " Specular Color").c_str(), &obj.material->specular[0]);
