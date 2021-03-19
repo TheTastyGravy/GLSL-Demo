@@ -3,19 +3,27 @@
 #include <Input.h>
 
 
-Camera::Camera()
+Camera::Camera(glm::vec3 position, bool isStatic, float phi, float theta)
 {
-	position = glm::vec3(-10, 2, 0);
-	phi = 0;
-	theta = 0;
+	this->position = position;
+	this->phi = phi;
+	this->theta = theta;
+	this->isStatic = isStatic;
 
-	lastMouseX = 0;
-	lastMouseY = 0;
+	this->lastMouseX = 0;
+	this->lastMouseY = 0;
 }
 
 
 void Camera::update(float deltaTime)
 {
+	//static cameras dont need to move
+	if (isCameraStatic())
+	{
+		return;
+	}
+
+
 	aie::Input* input = aie::Input::getInstance();
 	float thetaR = glm::radians(theta);
 	float phiR = glm::radians(phi);

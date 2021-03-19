@@ -16,7 +16,6 @@ class Instance
 public:
 	Instance(glm::mat4 transform, aie::OBJMesh* mesh, aie::ShaderProgram* shader);
 	Instance(const glm::vec3& position, const glm::vec3& eulerAngles, const glm::vec3& scale, aie::OBJMesh* mesh, aie::ShaderProgram* shader);
-	~Instance();
 
 	void draw(Scene* scene);
 

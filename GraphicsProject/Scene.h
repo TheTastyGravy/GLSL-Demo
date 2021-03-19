@@ -37,7 +37,7 @@ struct PointLight
 class Scene
 {
 public:
-	Scene(Camera* camera, glm::vec2 windowSize, glm::vec3 ambientLight);
+	Scene(std::vector<Camera*> cameras, glm::vec2 windowSize, glm::vec3 ambientLight);
 	~Scene();
 
 	void addInstance(Instance* instance);
@@ -47,7 +47,11 @@ public:
 	void draw();
 
 
-	Camera* getCamera() const { return camera; }
+	std::vector<Camera*>& getCameras() { return cameras; }
+	Camera* getCurrentCamera() const { return cameras[cameraIndex]; }
+	int getCameraIndex() const { return cameraIndex; }
+	void setCameraIndex(int index) { cameraIndex = index; }
+
 	glm::vec2 getWindowSize() const { return windowSize; }
 
 	glm::vec3& getAmbientLight() { return ambientLight; }
@@ -55,7 +59,8 @@ public:
 	std::vector<PointLight*>& getPointLights() { return pointLights; }
 
 protected:
-	Camera* camera;
+	std::vector<Camera*> cameras;
+	int cameraIndex = 0;
 	glm::vec2 windowSize;
 
 	//lights

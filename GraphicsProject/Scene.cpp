@@ -7,15 +7,19 @@
 #include <glm/ext.hpp>
 
 
-Scene::Scene(Camera* camera, glm::vec2 windowSize, glm::vec3 ambientLight)
+Scene::Scene(std::vector<Camera*> cameras, glm::vec2 windowSize, glm::vec3 ambientLight)
 {
-	this->camera = camera;
+	this->cameras = cameras;
 	this->windowSize = windowSize;
 	this->ambientLight = ambientLight;
 }
 
 Scene::~Scene()
 {
+	for (auto cam : cameras)
+	{
+		delete cam;
+	}
 	for (auto shader : shaders)
 	{
 		delete shader;
@@ -86,7 +90,7 @@ void Scene::draw()
 		shader->bind();
 		
 		//bind camera position
-		shader->bindUniform("CameraPosition", camera->getPosition());
+		shader->bindUniform("CameraPosition", cameras[cameraIndex]->getPosition());
 
 		//bind lighting
 		bindLights(shader);

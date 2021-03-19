@@ -30,23 +30,26 @@ protected:
 		aie::OBJMesh::Material* material;
 	};
 	// Used to edit objeects transforms with ImGui
-	struct Transform
+	struct EditorTransform
 	{
 		std::string name;
 		glm::mat4& transform;
+
+		glm::vec3 position;
+		glm::vec3 rotation;
+		glm::vec3 scale;
 	};
 
 	void imguiMaterialTool(std::string name, MeshObject& obj);
 
 
 	Scene* scene;
-	Camera* camera;
 
 	//mesh objects
 	MeshObject bunny;
 	MeshObject soulSpear;
 	MeshObject m1Carbine;
 
-	std::vector<Transform> transforms;
+	std::vector<EditorTransform> transforms;
 	
 };

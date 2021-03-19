@@ -7,8 +7,6 @@
 #include "Shader.h"
 #include "Instance.h"
 
-#include <iostream>
-
 
 GraphicsProjectApp::GraphicsProjectApp()
 {
@@ -26,12 +24,18 @@ bool GraphicsProjectApp::startup()
 	aie::Gizmos::create(10000, 10000, 10000, 10000);
 
 
-	//create new camera
-	camera = new Camera();
+	//create cameras (1 movable, 3 static)
+	std::vector<Camera*> cams = std::vector<Camera*>();
+	cams.push_back(new Camera(glm::vec3(-10, 3, 0)));
+	cams.push_back(new Camera(glm::vec3(-10, 0, 0), true, 0, 0));
+	cams.push_back(new Camera(glm::vec3(0, 15, 0), true, -90, 0));
+	cams.push_back(new Camera(glm::vec3(0, 0, 10), true, 0, -90));
+
 	//create new scene
-	scene = new Scene(camera, glm::vec2(getWindowWidth(), getWindowHeight()), glm::vec3(.5f));
+	scene = new Scene(cams, glm::vec2(getWindowWidth(), getWindowHeight()), glm::vec3(.5f));
 	//add lights
 	scene->addLight(new DirectionalLight(glm::vec3(1, 0, 0), glm::vec3(1)));
+	scene->addLight(new DirectionalLight(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0)));
 	scene->addLight(new PointLight(glm::vec3(0), glm::vec3(1, 0, 0)));
 
 	
@@ -43,7 +47,6 @@ void GraphicsProjectApp::shutdown()
 {
 	aie::Gizmos::destroy();
 	delete scene;
-	delete camera;
 }
 
 
@@ -59,8 +62,7 @@ void GraphicsProjectApp::update(float deltaTime)
 	scene->getDirectionalLights()[0]->direction = glm::normalize(glm::vec3(glm::cos(time * 2), 0, glm::sin(time * 2)));
 
 	//update current camera
-	camera->update(deltaTime);
-	
+	scene->getCurrentCamera()->update(deltaTime);
 
 	//quit on escape
 	if (input->isKeyDown(aie::INPUT_KEY_ESCAPE))
@@ -76,8 +78,8 @@ void GraphicsProjectApp::draw()
 	aie::Gizmos::clear();
 
 	//get camera matrices
-	glm::mat4 projectionMatrix = camera->getProjectionMatrix(getWindowWidth(), getWindowHeight());
-	glm::mat4 viewMatrix = camera->getViewMatrix();
+	glm::mat4 projectionMatrix = scene->getCurrentCamera()->getProjectionMatrix(getWindowWidth(), getWindowHeight());
+	glm::mat4 viewMatrix = scene->getCurrentCamera()->getViewMatrix();
 
 
 	//draw gizmo for point lights
@@ -144,27 +146,22 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 	for (int i = 0; i < 10; i++)
 	{
 		instance = new Instance(glm::vec3(i * 2, 0, 0), glm::vec3(0, i * 30, 0), glm::vec3(1), &soulSpear.mesh, normalShader);
-		transforms.push_back({ "Soul Spear " + std::to_string(i), instance->getTransform() });
+		transforms.push_back({ "Soul Spear " + std::to_string(i), instance->getTransform(),
+								glm::vec3(i * 2, 0, 0), glm::vec3(0, i * 30, 0), glm::vec3(1) });
 		scene->addInstance(instance);
 	}
 
 	//add m1carbine
 	instance = new Instance(glm::vec3(-2, 0, 0), glm::vec3(0, 90, 0), glm::vec3(.1f), &m1Carbine.mesh, normalShader);
-	transforms.push_back({ "M1 Carbine", instance->getTransform() });
+	transforms.push_back({ "M1 Carbine", instance->getTransform(), 
+							glm::vec3(-2, 0, 0), glm::vec3(0, 90, 0), glm::vec3(.1f) });
 	scene->addInstance(instance);
 	//add bunny
 	instance = new Instance(glm::vec3(0, 0, 3), glm::vec3(0, 0, 0), glm::vec3(.2f), &bunny.mesh, phongShader);
-	transforms.push_back({ "Bunny", instance->getTransform() });
+	transforms.push_back({ "Bunny", instance->getTransform(),
+							glm::vec3(0, 0, 3), glm::vec3(0), glm::vec3(.2f) });
 	scene->addInstance(instance);
 
-	Transform trans = transforms[0];
-	for (int i = 0; i < 4; i++)
-	{
-		for (int j = 0; j < 4; j++)
-		{
-			std::cout << std::to_string(i) + " " + std::to_string(j) + "   " + std::to_string(trans.transform[i][j]) + "\n";
-		}
-	}
 
 	return true;
 }
@@ -172,11 +169,12 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 
 void GraphicsProjectApp::IMGUI_Logic()
 {
+#pragma region Lighting Editor
 	ImGui::Begin("Lighting Editor");
 	//ambient light
 	ImGui::ColorEdit3("Ambient Light Color", &scene->getAmbientLight()[0]);
 	ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
-	
+
 
 	//	----- DIRECTIONAL LIGHT -----
 	std::vector<DirectionalLight*>& directionalLights = scene->getDirectionalLights();
@@ -231,7 +229,7 @@ void GraphicsProjectApp::IMGUI_Logic()
 
 
 	ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
-	
+
 	//	----- POINT LIGHT -----
 	std::vector<PointLight*>& pointLights = scene->getPointLights();
 	static int currentPointLight = 0;
@@ -264,27 +262,27 @@ void GraphicsProjectApp::IMGUI_Logic()
 	ImGui::ColorEdit3("Point Light Color", &pointLights[currentPointLight]->color[0]);
 	//nav buttons
 	if (currentPointLight != 0)
+	{
+		if (ImGui::Button("Prev Point", ImVec2(100, 20)))
 		{
-			if (ImGui::Button("Prev Point", ImVec2(100, 20)))
-			{
-				currentPointLight--;
-			}
-			//next button should be on the same line
-			ImGui::SameLine(0, 0);
+			currentPointLight--;
 		}
+		//next button should be on the same line
+		ImGui::SameLine(0, 0);
+	}
 	if (currentPointLight != pointLights.size() - 1)
+	{
+		//move over from the prev button
+		ImGui::Indent(110);
+		if (ImGui::Button("Next Point", ImVec2(100, 20)))
 		{
-			//move over from the prev button
-			ImGui::Indent(110);
-			if (ImGui::Button("Next Point", ImVec2(100, 20)))
-			{
-				currentPointLight++;
-			}
-			ImGui::Unindent(110);
+			currentPointLight++;
 		}
-	
+		ImGui::Unindent(110);
+	}
+
 	ImGui::End();
-	
+#pragma endregion
 
 	//create tools for editing materials
 	ImGui::Begin("Material Editor");
@@ -296,20 +294,64 @@ void GraphicsProjectApp::IMGUI_Logic()
 
 	//create tools for editing each objects transform
 	ImGui::Begin("Transform Editor");
-
 	static int currentTransform = 0;
-	Transform trans = transforms[currentTransform];
+	EditorTransform& trans = transforms[currentTransform];
+	
+	ImGui::Text(trans.name.c_str());
+	//editor for transform
+	ImGui::DragFloat3("Position", &trans.position[0], 0.25f);
+	ImGui::DragFloat3("Rotation", &trans.rotation[0], 0.25f);
+	ImGui::DragFloat3("Scale", &trans.scale[0], 0.25f);
+
+	//nav buttons
+	if (ImGui::Button("Prev"))
+	{
+		currentTransform--;
+		if (currentTransform < 0)
+		{
+			currentTransform = transforms.size() - 1;
+		}
+	}
+	ImGui::SameLine(0, 0);
+	ImGui::Indent(50);
+	if (ImGui::Button("Next"))
+	{
+		currentTransform++;
+		if (currentTransform > transforms.size() + 1)
+		{
+			currentTransform = 0;
+		}
+	}
+
+	//update transform with new pos, rot, and scale
+	trans.transform = Instance::createTransform(trans.position, trans.rotation, trans.scale);
+	ImGui::End();
 
 
-	ImGui::DragFloat3("Position", &(trans.transform[3])[0], 0.25f);
+	//create tool for swapping camera
+	ImGui::Begin("Camera Controller");
+	int camIndex = scene->getCameraIndex();
+	//display current camera and weather its static or movable
+	ImGui::Text(("Current camera: " + std::to_string(camIndex)).c_str());
+	ImGui::Text((std::string("Camera is ") + (scene->getCurrentCamera()->isCameraStatic() ? "static" : "movable")).c_str());
 
-	glm::vec3 scale = glm::vec3(trans.transform[0][0], trans.transform[1][1], trans.transform[2][2]);
-	ImGui::DragFloat3("Scale", &scale[0], 0.25f);
-	trans.transform[0][0] = scale.x;
-	trans.transform[1][1] = scale.y;
-	trans.transform[2][2] = scale.z;
-
-
+	//nav buttons
+	if (camIndex > 0)
+	{
+		if (ImGui::Button("Prev"))
+		{
+			scene->setCameraIndex(camIndex - 1);
+		}
+		ImGui::SameLine(0, 0);
+	}
+	if (camIndex < scene->getCameras().size() - 1)
+	{
+		ImGui::Indent(50);
+		if (ImGui::Button("Next"))
+		{
+			scene->setCameraIndex(camIndex + 1);
+		}
+	}
 	ImGui::End();
 }
 
