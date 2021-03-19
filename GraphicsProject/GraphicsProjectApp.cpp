@@ -9,6 +9,7 @@
 #include "Instance.h"
 #include "Camera.h"
 #include "Shader.h"
+#include "ParticleGenerator.h"
 
 
 GraphicsProjectApp::GraphicsProjectApp()
@@ -26,7 +27,6 @@ bool GraphicsProjectApp::startup()
 	//initialise gizmo primitive counts
 	aie::Gizmos::create(10000, 10000, 10000, 10000);
 
-
 	//create cameras (1 movable, 3 static)
 	std::vector<Camera*> cams = std::vector<Camera*>();
 	cams.push_back(new Camera(glm::vec3(-10, 3, 0)));
@@ -41,6 +41,7 @@ bool GraphicsProjectApp::startup()
 	scene->addLight(new DirectionalLight(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0)));
 	scene->addLight(new PointLight(glm::vec3(0), 30, 2, glm::vec3(1, 0, 0)));
 
+	particleGen = new ParticleGenerator(glm::vec3(0), scene, 3, 50);
 	
 	//create mesh objects
 	return loadShaderAndMeshLogic();
@@ -66,6 +67,8 @@ void GraphicsProjectApp::update(float deltaTime)
 
 	//update current camera
 	scene->getCurrentCamera()->update(deltaTime);
+
+	particleGen->update(deltaTime);
 
 	//quit on escape
 	if (input->isKeyDown(aie::INPUT_KEY_ESCAPE))
@@ -93,6 +96,8 @@ void GraphicsProjectApp::draw()
 
 	//draw
 	scene->draw();
+	particleGen->draw();
+
 	aie::Gizmos::draw(projectionMatrix * viewMatrix);
 }
 

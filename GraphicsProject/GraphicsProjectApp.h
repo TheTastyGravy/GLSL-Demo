@@ -5,6 +5,7 @@
 #include "OBJMesh.h"
 
 class Scene;
+class ParticleGenerator;
 
 
 class GraphicsProjectApp : public aie::Application
@@ -44,6 +45,8 @@ protected:
 
 
 	Scene* scene;
+
+	ParticleGenerator* particleGen;
 
 	//mesh objects
 	MeshObject bunny;
