@@ -4,8 +4,11 @@
 #include <imgui.h>
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
-#include "Shader.h"
+
+#include "Scene.h"
 #include "Instance.h"
+#include "Camera.h"
+#include "Shader.h"
 
 
 GraphicsProjectApp::GraphicsProjectApp()
@@ -36,7 +39,7 @@ bool GraphicsProjectApp::startup()
 	//add lights
 	scene->addLight(new DirectionalLight(glm::vec3(1, 0, 0), glm::vec3(1)));
 	scene->addLight(new DirectionalLight(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0)));
-	scene->addLight(new PointLight(glm::vec3(0), glm::vec3(1, 0, 0)));
+	scene->addLight(new PointLight(glm::vec3(0), 30, 2, glm::vec3(1, 0, 0)));
 
 	
 	//create mesh objects
@@ -239,7 +242,7 @@ void GraphicsProjectApp::IMGUI_Logic()
 	if (ImGui::Button("New Point Light", ImVec2(150, 20)))
 	{
 		//add light and set editor to it
-		pointLights.push_back(new PointLight(glm::vec3(0), glm::vec3(0)));
+		pointLights.push_back(new PointLight());
 		currentPointLight = pointLights.size() - 1;
 	}
 	if (currentPointLight != 0)
@@ -259,6 +262,8 @@ void GraphicsProjectApp::IMGUI_Logic()
 	//light editor
 	ImGui::Text(("Current Point Light: " + std::to_string(currentPointLight + 1)).c_str());
 	ImGui::DragFloat3("Point Light Position", &pointLights[currentPointLight]->position[0], 0.25f);
+	ImGui::DragFloat("Point Light Range", &pointLights[currentPointLight]->range, 0.1f, 0, 100);
+	ImGui::DragFloat("Point Light Brightness", &pointLights[currentPointLight]->brightness, 0.1f, 0, 100);
 	ImGui::ColorEdit3("Point Light Color", &pointLights[currentPointLight]->color[0]);
 	//nav buttons
 	if (currentPointLight != 0)
@@ -302,7 +307,6 @@ void GraphicsProjectApp::IMGUI_Logic()
 	ImGui::DragFloat3("Position", &trans.position[0], 0.25f);
 	ImGui::DragFloat3("Rotation", &trans.rotation[0], 0.25f);
 	ImGui::DragFloat3("Scale", &trans.scale[0], 0.25f);
-
 	//nav buttons
 	if (ImGui::Button("Prev"))
 	{

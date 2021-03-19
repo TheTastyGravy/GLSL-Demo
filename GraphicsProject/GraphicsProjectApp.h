@@ -3,8 +3,8 @@
 #include <glm/mat4x4.hpp>
 #include <vector>
 #include "OBJMesh.h"
-#include "Camera.h"
-#include "Scene.h"
+
+class Scene;
 
 
 class GraphicsProjectApp : public aie::Application
@@ -51,5 +51,4 @@ protected:
 	MeshObject m1Carbine;
 
 	std::vector<EditorTransform> transforms;
-	
 };

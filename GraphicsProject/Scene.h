@@ -23,13 +23,17 @@ struct DirectionalLight
 };
 struct PointLight
 {
-	PointLight(glm::vec3 position = glm::vec3(0), glm::vec3 color = glm::vec3(1))
+	PointLight(glm::vec3 position = glm::vec3(0), float range = 20, float brightness = 2, glm::vec3 color = glm::vec3(1))
 	{
 		this->position = position;
+		this->range = range;
+		this->brightness = brightness;
 		this->color = color;
 	}
 
 	glm::vec3 position;
+	float range;
+	float brightness;
 	glm::vec3 color;
 };
 
@@ -48,6 +52,7 @@ public:
 
 
 	std::vector<Camera*>& getCameras() { return cameras; }
+	// Get the currently active camera
 	Camera* getCurrentCamera() const { return cameras[cameraIndex]; }
 	int getCameraIndex() const { return cameraIndex; }
 	void setCameraIndex(int index) { cameraIndex = index; }
@@ -69,6 +74,6 @@ protected:
 	std::vector<PointLight*> pointLights;
 	
 	std::list<Instance*> instances;
+	//updated with each unique shader when an instance is added
 	std::list<aie::ShaderProgram*> shaders;
-
 };

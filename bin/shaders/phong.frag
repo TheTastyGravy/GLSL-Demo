@@ -19,6 +19,8 @@ struct DirectionalLight
 struct PointLight
 {
     vec3 Position;
+    float Range;
+    float Brightness;
     vec3 Color;
 };
 //lighting
@@ -38,9 +40,9 @@ out vec4 FragColor;
 void main()
 {
     //normalize normal
-    vec3 N = normalize(vNormal);
+    vec3 normal = normalize(vNormal);
     //find view vector
-    vec3 V = normalize(CameraPosition - vPosition.xyz);
+    vec3 view = normalize(CameraPosition - vPosition.xyz);
 
     
     //find the total diffuse and specular of all lights
@@ -52,25 +54,40 @@ void main()
         //normalise light direction
         vec3 directionalLightDir = normalize(DirectionalLights[i].Direction);
         //find reflection vector
-        vec3 directionalLightReflection = reflect(directionalLightDir, N);
+        vec3 directionalLightReflection = reflect(directionalLightDir, normal);
 
         //lambert term * light color
-        diffuseTotal += max(0, min(1, dot(N, -directionalLightDir))) * DirectionalLights[i].Color;
+        diffuseTotal += max(0, min(1, dot(normal, -directionalLightDir))) * DirectionalLights[i].Color;
         //specular term * light color
-        specularTotal += pow(max(0, dot(directionalLightReflection, V)), Ns) * DirectionalLights[i].Color;
+        specularTotal += pow(max(0, dot(directionalLightReflection, view)), Ns) * DirectionalLights[i].Color;
     }
     // --- Point Lights ---
     for (int i = 0; i < PointLightCount; i++)
     {
         //find direction from point light to position
-        vec3 pointLightDir = normalize(vPosition.xyz - PointLights[i].Position);
-        //find reflection vector
-        vec3 pointLightReflection = reflect(pointLightDir, N);
+        vec3 pointLightDir = vPosition.xyz - PointLights[i].Position;
 
-        //lambert term * light color
-        diffuseTotal += max(0, min(1, dot(N, -pointLightDir))) * PointLights[i].Color;
-        //specular term * light color
-        specularTotal += pow(max(0, dot(pointLightReflection, V)), Ns) * PointLights[i].Color;
+        //find the magnitude of the direction to get the distance
+        float distToLight = sqrt((pointLightDir.x * pointLightDir.x) + (pointLightDir.y * pointLightDir.y) + (pointLightDir.z * pointLightDir.z));
+        //if out of range of the point light, skip it
+        if (distToLight > PointLights[i].Range)
+        {
+            continue;
+        }
+
+        //normalize direction
+        pointLightDir = normalize(pointLightDir);
+        //find reflection vector
+        vec3 pointLightReflection = reflect(pointLightDir, normal);
+
+        //intensity decreases with distance
+        float intensity = 1 - (distToLight / PointLights[i].Range);
+        intensity *= PointLights[i].Brightness;
+
+        //lambert term * light color * intensity
+        diffuseTotal += max(0, min(1, dot(normal, -pointLightDir))) * PointLights[i].Color * intensity;
+        //specular term * light color * intensity
+        specularTotal += pow(max(0, dot(pointLightReflection, view)), Ns) * PointLights[i].Color * intensity;
     }
 
     

@@ -36,6 +36,7 @@ void Instance::draw(Scene* scene)
 
 glm::mat4 Instance::createTransform(const glm::vec3& position, const glm::vec3& eulerAngles, const glm::vec3& scale)
 {
+	//use glm functions to create transform matrix
 	return glm::translate(glm::mat4(1), position) 
 		* glm::rotate(glm::mat4(1), glm::radians(eulerAngles.z), glm::vec3(0, 0, 1)) 
 		* glm::rotate(glm::mat4(1), glm::radians(eulerAngles.y), glm::vec3(0, 1, 0)) 

@@ -66,6 +66,7 @@ void Scene::draw()
 	{
 		shader->bindUniform("AmbientColor", ambientLight);
 
+		//bind how many of each light there are
 		int directionalLightCount = directionalLights.size();
 		shader->bindUniform("DirectionalLightCount", directionalLightCount);
 		int pointLightCount = pointLights.size();
@@ -80,11 +81,13 @@ void Scene::draw()
 		for (int i = 0; i < pointLightCount; i++)
 		{
 			shader->bindUniform(("PointLights[" + std::to_string(i) + "].Position").c_str(), pointLights[i]->position);
+			shader->bindUniform(("PointLights[" + std::to_string(i) + "].Range").c_str(), pointLights[i]->range);
+			shader->bindUniform(("PointLights[" + std::to_string(i) + "].Brightness").c_str(), pointLights[i]->brightness);
 			shader->bindUniform(("PointLights[" + std::to_string(i) + "].Color").c_str(), pointLights[i]->color);
 		}
 	};
 
-	
+	//setup each shader before drawing
 	for (auto shader : shaders)
 	{
 		shader->bind();
@@ -95,9 +98,10 @@ void Scene::draw()
 		//bind lighting
 		bindLights(shader);
 	}
-
+	//draw eah instance
 	for (auto instance : instances)
 	{
+		//instances have their own shaders
 		instance->draw(this);
 	}
 }

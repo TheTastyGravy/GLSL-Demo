@@ -15,6 +15,7 @@ class Instance
 {
 public:
 	Instance(glm::mat4 transform, aie::OBJMesh* mesh, aie::ShaderProgram* shader);
+	// Uses a transform using position, eulerAngles, and scale
 	Instance(const glm::vec3& position, const glm::vec3& eulerAngles, const glm::vec3& scale, aie::OBJMesh* mesh, aie::ShaderProgram* shader);
 
 	void draw(Scene* scene);

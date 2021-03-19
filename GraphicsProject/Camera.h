@@ -11,7 +11,9 @@ public:
 	void update(float deltaTime);
 	glm::vec3 getPosition() { return position; }
 
+	// Matrix used to convert into the cameras local space
 	glm::mat4 getViewMatrix();
+	// Matrix used to project into clip space
 	glm::mat4 getProjectionMatrix(float width, float height);
 
 	bool isCameraStatic() const { return isStatic; }
