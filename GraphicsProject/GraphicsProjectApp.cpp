@@ -41,7 +41,8 @@ bool GraphicsProjectApp::startup()
 	scene->addLight(new DirectionalLight(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0)));
 	scene->addLight(new PointLight(glm::vec3(0), 30, 2, glm::vec3(1, 0, 0)));
 
-	particleGen = new ParticleGenerator(glm::vec3(0), scene, 3, 50);
+	particleGen = new ParticleGenerator(glm::vec3(0), scene, 50);
+	particleGen->setup(3, 3, glm::vec4(1, 0, 0, 1), glm::vec4(0, 1, 0, 0), glm::vec3(0, -1, 0), 2, 1, 0);
 	
 	//create mesh objects
 	return loadShaderAndMeshLogic();
@@ -51,6 +52,8 @@ void GraphicsProjectApp::shutdown()
 {
 	aie::Gizmos::destroy();
 	delete scene;
+
+	delete particleGen;
 }
 
 

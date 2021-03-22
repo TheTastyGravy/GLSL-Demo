@@ -14,42 +14,53 @@ public:
 	struct Particle
 	{
 		Particle() :
-			position(glm::vec3(0)), velocity(glm::vec3(0)), color(glm::vec4(1)), life(0)
+			position(glm::vec3(0)), velocity(glm::vec3(0)), scale(1), color(glm::vec4(1)), life(0)
 		{}
 
 		glm::vec3 position;
 		glm::vec3 velocity;
+
+		float scale;
 
 		glm::vec4 color;
 		//decrements while alive until 0
 		float life;
 	};
 
-	// spawnRate is particles/second
-	ParticleGenerator(const glm::vec3& position, Scene* csceneam, float spawnRate, unsigned int particleCount);
+	ParticleGenerator(const glm::vec3& position, Scene* scene, unsigned int particleCount);
 	~ParticleGenerator();
+
+	// emisionRate is in particles/second
+	void setup(float emisionRate, float lifeTime, glm::vec4 startColor, glm::vec4 endColor, glm::vec3 acceleration, float startSpeed, float startScale, float endScale);
 
 	void update(float deltaTime);
 	void draw();
 
 protected:
-	unsigned int findUnusedParticle();
-
-	glm::mat4 createTransform(const glm::vec3& position, const glm::vec3& eulerAngles, const glm::vec3& scale);
+	unsigned int findUnusedParticle() const;
 	
 
-	float spawnDelay;
-
 	glm::vec3 position;
-	glm::mat4 transform;
 
+	//is this generator emiting particles?
+	bool isEmiting = false;
 	std::vector<Particle> particles;
+	//total number of particles in array
 	unsigned int particleCount;
-
 	unsigned int particleVAO;
+	unsigned int particleVBO;
 
 	aie::ShaderProgram* shader;
+	Scene* scene;	//used to get camera
 
-	Scene* scene;
 
+	float emisionRate;
+
+	float lifeTime;
+	glm::vec4 startColor;
+	glm::vec4 endColor;
+	glm::vec3 acceleration;
+	float startSpeed;
+	float startScale;
+	float endScale;
 };

@@ -6,48 +6,40 @@
 #include "Scene.h"
 
 
-ParticleGenerator::ParticleGenerator(const glm::vec3& position, Scene* scene, float spawnRate, unsigned int particleCount)
+ParticleGenerator::ParticleGenerator(const glm::vec3& position, Scene* scene, unsigned int particleCount) :
+	emisionRate(0), lifeTime(0), startColor(glm::vec4(0)), endColor(glm::vec4(0)), acceleration(glm::vec3(0)), startSpeed(0), startScale(0), endScale(0)
 {
 	this->position = position;
-	this->transform = createTransform(position, glm::vec3(0), glm::vec3(1));
-
-
-	this->spawnDelay = 1 / spawnRate;	//convert from particles/second
-	this->particleCount = particleCount;
-
 	this->scene = scene;
-
+	this->particleCount = particleCount;
+	
 	//fill vector with basic particles
-	for (int i = 0; i < particleCount; i++)
+	for (unsigned int i = 0; i < particleCount; i++)
 	{
 		particles.push_back(Particle());
 	}
 
 
 	//create particle mesh and atribute properties
-	unsigned int VBO;
 	float particle_quad[] = {
-		-0.5f, 0.f, 0.5f,  1.f,
-		0.5f,  0.f, 0.5f,  1.f,
-		- 0.5f, 0.f, -0.5f, 1.f,
+		-0.5f,  0.5f, 0.f, 1.f,
+		 0.5f,  0.5f, 0.f, 1.f,
+		-0.5f, -0.5f, 0.f, 1.f,
 
-		- 0.5f, 0.f, -0.5f, 1.f,
-		0.5f,  0.f, 0.5f,  1.f,
-		0.5f,  0.f, -0.5f, 1.f
+		-0.5f,  -0.5f, 0.f, 1.f,
+		 0.5f,   0.5f, 0.f, 1.f,
+		 0.5f,  -0.5f, 0.f, 1.f
 	};
-	glGenBuffers(1, &VBO);
+	glGenBuffers(1, &particleVBO);
 	glGenVertexArrays(1, &this->particleVAO);
 	glBindVertexArray(this->particleVAO);
-
 	//fill mesh buffer
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBindBuffer(GL_ARRAY_BUFFER, particleVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(particle_quad), particle_quad, GL_STATIC_DRAW);
-
 	//set mesh atributes
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
 	glBindVertexArray(0);
-
 
 
 	//load shader
@@ -63,30 +55,58 @@ ParticleGenerator::ParticleGenerator(const glm::vec3& position, Scene* scene, fl
 ParticleGenerator::~ParticleGenerator()
 {
 	delete shader;
+	glDeleteVertexArrays(1, &particleVAO);
+	glDeleteBuffers(1, &particleVBO);
 	//particles vector holds values, so it just goes out of scope
+}
+
+void ParticleGenerator::setup(float emisionRate, float lifeTime, glm::vec4 startColor, glm::vec4 endColor, glm::vec3 acceleration, float startSpeed, float startScale, float endScale)
+{
+	isEmiting = true;
+	//convert from particles/second
+	this->emisionRate = 1.f / emisionRate;
+
+	this->lifeTime = lifeTime;
+
+	this->startColor = startColor;
+	this->endColor = endColor;
+
+	this->acceleration = acceleration;
+	this->startSpeed = startSpeed;
+
+	this->startScale = startScale;
+	this->endScale = endScale;
 }
 
 
 void ParticleGenerator::update(float deltaTime)
 {
+	if (!isEmiting)
+	{
+		return;
+	}
+
 	//time since the last particle was spawned
 	static float timePassed = 0.0f;
-
 	timePassed += deltaTime;
 
 	//spawn particles after spawnDelay has passed
-	while (timePassed > spawnDelay)
+	while (timePassed > emisionRate)
 	{
-		timePassed -= spawnDelay;
+		timePassed -= emisionRate;
 
 		//get index for an unused particle
 		unsigned int index = findUnusedParticle();
 
 		//temp particle values
-		particles[index].life = 3.f;
-		particles[index].color = glm::vec4(1, 0, 0, 1);
+		particles[index].life = lifeTime;
+		particles[index].color = startColor;
 		particles[index].position = position;
-		particles[index].velocity = glm::vec3(0, -1, 0);
+
+		//random xyz, then set magnitude to startSpeed
+		glm::vec3 vel(rand() % 3 - 1, rand() % 3 - 1, rand() % 3 - 1);
+		vel = glm::normalize(vel) * startSpeed;
+		particles[index].velocity = vel;
 	}
 
 	//update particles
@@ -98,26 +118,30 @@ void ParticleGenerator::update(float deltaTime)
 			continue;
 		}
 
-		//update life and position
+		//update particle variables
 		iter.life -= deltaTime;
 		iter.position += iter.velocity * deltaTime;
-
-
-		//	--- update custom values ---
-
-		iter.color = glm::vec4(sinf(iter.life / 3.f), 0, 0, 1);
+		iter.velocity += acceleration * deltaTime;
+		iter.color = glm::mix(endColor, startColor, iter.life / lifeTime);
+		iter.scale = glm::mix(endScale, startScale, iter.life / lifeTime);
 	}
 }
 
 void ParticleGenerator::draw()
 {
+	if (!isEmiting)
+	{
+		return;
+	}
+
 	shader->bind();
-
-	//causes particles to stack, making them 'glow'
+	//make particles stack alpha
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	glDepthMask(false);
+	//since all particles use the same quad, bind it once
+	glBindVertexArray(particleVAO);
 
-
-	for (auto iter : particles)
+	for (auto& iter : particles)
 	{
 		//skip dead particles
 		if (iter.life <= 0)
@@ -125,25 +149,36 @@ void ParticleGenerator::draw()
 			continue;
 		}
 
-		shader->bindUniform("ProjectionViewModel", scene->getCurrentCamera()->getProjectionMatrix(scene->getWindowSize().x, scene->getWindowSize().y) * scene->getCurrentCamera()->getViewMatrix() * createTransform(iter.position, glm::vec3(0), glm::vec3(1)));
+		//create billboard transform to face towards the camera
+		glm::vec3 zAxis= glm::normalize(iter.position - scene->getCurrentCamera()->getPosition());
+		glm::vec3 xAxis= glm::cross(glm::vec3(0, 1, 0), zAxis);
+		glm::vec3 yAxis= glm::cross(zAxis, xAxis);
+		glm::mat4 billboard(glm::vec4(xAxis, 0), glm::vec4(yAxis, 0), glm::vec4(zAxis, 0), glm::vec4(0,0,0,1));
+		//translate and scale transform
+		billboard = glm::translate(glm::mat4(1), iter.position) * billboard * glm::scale(glm::mat4(1), glm::vec3(iter.scale));
+
+		//bind uniforms
+		shader->bindUniform("ProjectionViewModel", scene->getCurrentCamera()->getProjectionMatrix(scene->getWindowSize().x, scene->getWindowSize().y) * scene->getCurrentCamera()->getViewMatrix() * billboard);
 		shader->bindUniform("Color", iter.color);
 
-		glBindVertexArray(particleVAO);
+		//draw quad
 		glDrawArrays(GL_TRIANGLES, 0, 6);
-		glBindVertexArray(0);
 	}
 
-	//undo 'glow' effect
+	//unbind quad
+	glBindVertexArray(0);
+	//undo shader effects
+	glDepthMask(true);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 
-unsigned int ParticleGenerator::findUnusedParticle()
+unsigned int ParticleGenerator::findUnusedParticle() const
 {
 	static unsigned int lastUsedParticle = 0;
 
 	//search from the last particle to the end of the vector
-	for (int i = lastUsedParticle; i < particleCount; i++)
+	for (unsigned int i = lastUsedParticle; i < particleCount; i++)
 	{
 		//dead particle, return it
 		if (particles[i].life <= 0)
@@ -154,7 +189,7 @@ unsigned int ParticleGenerator::findUnusedParticle()
 	}
 
 	//no dead particles at the end, start again from the begining
-	for (int i = 0; i < lastUsedParticle; i++)
+	for (unsigned int i = 0; i < lastUsedParticle; i++)
 	{
 		//dead particle, return it
 		if (particles[i].life <= 0)
@@ -168,14 +203,4 @@ unsigned int ParticleGenerator::findUnusedParticle()
 	//reuse the first particle in this case
 	lastUsedParticle = 0;
 	return 0;
-}
-
-glm::mat4 ParticleGenerator::createTransform(const glm::vec3& position, const glm::vec3& eulerAngles, const glm::vec3& scale)
-{
-	//use glm functions to create transform matrix
-	return glm::translate(glm::mat4(1), position)
-		* glm::rotate(glm::mat4(1), glm::radians(eulerAngles.z), glm::vec3(0, 0, 1))
-		* glm::rotate(glm::mat4(1), glm::radians(eulerAngles.y), glm::vec3(0, 1, 0))
-		* glm::rotate(glm::mat4(1), glm::radians(eulerAngles.x), glm::vec3(1, 0, 0))
-		* glm::scale(glm::mat4(1), scale);
 }

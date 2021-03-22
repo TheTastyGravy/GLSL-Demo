@@ -81,7 +81,7 @@ void Camera::update(float deltaTime)
 }
 
 
-glm::mat4 Camera::getViewMatrix()
+glm::mat4 Camera::getViewMatrix() const
 {
 	float thetaR = glm::radians(theta);
 	float phiR = glm::radians(phi);
@@ -91,7 +91,7 @@ glm::mat4 Camera::getViewMatrix()
 	return glm::lookAt(position, position + forward, glm::vec3(0, 1, 0));;
 }
 
-glm::mat4 Camera::getProjectionMatrix(float width, float height)
+glm::mat4 Camera::getProjectionMatrix(float width, float height) const
 {
 	return glm::perspective(glm::pi<float>() * 0.25f, width / height, 0.1f, 1000.f);
 }
