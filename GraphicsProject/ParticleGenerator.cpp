@@ -6,22 +6,31 @@
 #include "Scene.h"
 
 
-ParticleGenerator::ParticleGenerator(const glm::vec3& position, Scene* scene, unsigned int particleCount) :
+ParticleGenerator::ParticleGenerator(const glm::vec3& position, Scene* scene, unsigned int maxParticles) :
 	emisionRate(0), lifeTime(0), startColor(glm::vec4(0)), endColor(glm::vec4(0)), acceleration(glm::vec3(0)), startSpeed(0), startScale(0), endScale(0)
 {
 	this->position = position;
 	this->scene = scene;
-	this->particleCount = particleCount;
+	this->maxParticles = maxParticles;
+	this->aliveParticles = 0;
+
+	this->particlePositionData = new float[maxParticles * 4];
+	this->particleColorData = new float[maxParticles * 4];
 	
 	//fill vector with basic particles
-	for (unsigned int i = 0; i < particleCount; i++)
+	for (unsigned int i = 0; i < maxParticles; i++)
 	{
 		particles.push_back(Particle());
 	}
 
 
+	//bind VAO
+	glGenVertexArrays(1, &this->particleVAO);
+	glBindVertexArray(this->particleVAO);
+
 	//create particle mesh and atribute properties
-	float particle_quad[] = {
+	float particle_quad[] = 
+	{
 		-0.5f,  0.5f, 0.f, 1.f,
 		 0.5f,  0.5f, 0.f, 1.f,
 		-0.5f, -0.5f, 0.f, 1.f,
@@ -30,15 +39,37 @@ ParticleGenerator::ParticleGenerator(const glm::vec3& position, Scene* scene, un
 		 0.5f,   0.5f, 0.f, 1.f,
 		 0.5f,  -0.5f, 0.f, 1.f
 	};
-	glGenBuffers(1, &particleVBO);
-	glGenVertexArrays(1, &this->particleVAO);
-	glBindVertexArray(this->particleVAO);
-	//fill mesh buffer
-	glBindBuffer(GL_ARRAY_BUFFER, particleVBO);
+	//create and fill quad buffer
+	glGenBuffers(1, &particleQuadBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, particleQuadBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(particle_quad), particle_quad, GL_STATIC_DRAW);
-	//set mesh atributes
+	//create pos buffer
+	glGenBuffers(1, &particlePositionBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, particlePositionBuffer);
+	glBufferData(GL_ARRAY_BUFFER, maxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+	//create color buffer
+	glGenBuffers(1, &particleColorBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, particleColorBuffer);
+	glBufferData(GL_ARRAY_BUFFER, maxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+
+	//set quad attribute on 0
 	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+	glBindBuffer(GL_ARRAY_BUFFER, particleQuadBuffer);
+	glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	//set pos attribute on 1
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, particlePositionBuffer);
+	glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+	//set color attribute on 2
+	glEnableVertexAttribArray(2);
+	glBindBuffer(GL_ARRAY_BUFFER, particleColorBuffer);
+	glVertexAttribPointer(2, 4, GL_FLOAT, GL_TRUE, 0, (void*)0);
+
+	glVertexAttribDivisor(0, 0);	//use same quad for all particles
+	glVertexAttribDivisor(1, 1);	//use each particle position
+	glVertexAttribDivisor(2, 1);	//use each particle color
+
+	//unbind VAO after done
 	glBindVertexArray(0);
 
 
@@ -56,7 +87,12 @@ ParticleGenerator::~ParticleGenerator()
 {
 	delete shader;
 	glDeleteVertexArrays(1, &particleVAO);
-	glDeleteBuffers(1, &particleVBO);
+	glDeleteBuffers(1, &particleQuadBuffer);
+	glDeleteBuffers(1, &particlePositionBuffer);
+	glDeleteBuffers(1, &particleColorBuffer);
+	delete particlePositionData;
+	delete particleColorData;
+
 	//particles vector holds values, so it just goes out of scope
 }
 
@@ -103,12 +139,12 @@ void ParticleGenerator::update(float deltaTime)
 		particles[index].color = startColor;
 		particles[index].position = position;
 
-		//random xyz, then set magnitude to startSpeed
-		glm::vec3 vel(rand() % 3 - 1, rand() % 3 - 1, rand() % 3 - 1);
-		vel = glm::normalize(vel) * startSpeed;
-		particles[index].velocity = vel;
+		//random point on a sphere radius startSpeed
+		particles[index].velocity = glm::sphericalRand(startSpeed);
 	}
 
+	//reset count
+	aliveParticles = 0;
 	//update particles
 	for (auto& iter : particles)
 	{
@@ -117,6 +153,20 @@ void ParticleGenerator::update(float deltaTime)
 		{
 			continue;
 		}
+
+#pragma region UpdateBufferData
+		//update data for buffers
+		particlePositionData[aliveParticles * 4 + 0] = iter.position.x;
+		particlePositionData[aliveParticles * 4 + 1] = iter.position.y;
+		particlePositionData[aliveParticles * 4 + 2] = iter.position.z;
+		particlePositionData[aliveParticles * 4 + 3] = iter.scale;
+		particleColorData[aliveParticles * 4 + 0] = iter.color.r;
+		particleColorData[aliveParticles * 4 + 1] = iter.color.g;
+		particleColorData[aliveParticles * 4 + 2] = iter.color.b;
+		particleColorData[aliveParticles * 4 + 3] = iter.color.a;
+		//count how mnay particles are currently alive
+		aliveParticles++;
+#pragma endregion
 
 		//update particle variables
 		iter.life -= deltaTime;
@@ -138,34 +188,28 @@ void ParticleGenerator::draw()
 	//make particles stack alpha
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 	glDepthMask(false);
-	//since all particles use the same quad, bind it once
+	//bind VAO
 	glBindVertexArray(particleVAO);
 
-	for (auto& iter : particles)
-	{
-		//skip dead particles
-		if (iter.life <= 0)
-		{
-			continue;
-		}
 
-		//create billboard transform to face towards the camera
-		glm::vec3 zAxis= glm::normalize(iter.position - scene->getCurrentCamera()->getPosition());
-		glm::vec3 xAxis= glm::cross(glm::vec3(0, 1, 0), zAxis);
-		glm::vec3 yAxis= glm::cross(zAxis, xAxis);
-		glm::mat4 billboard(glm::vec4(xAxis, 0), glm::vec4(yAxis, 0), glm::vec4(zAxis, 0), glm::vec4(0,0,0,1));
-		//translate and scale transform
-		billboard = glm::translate(glm::mat4(1), iter.position) * billboard * glm::scale(glm::mat4(1), glm::vec3(iter.scale));
+	//bind uniforms
+	shader->bindUniform("CameraPosition", scene->getCurrentCamera()->getPosition());
+	shader->bindUniform("ProjectionViewMatrix", scene->getCurrentCamera()->getProjectionMatrix(scene->getWindowSize().x, scene->getWindowSize().y) * scene->getCurrentCamera()->getViewMatrix());
+	
+	//set position buffer to position data
+	glBindBuffer(GL_ARRAY_BUFFER, particlePositionBuffer);
+	glBufferData(GL_ARRAY_BUFFER, maxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); //buffer orphaning
+	glBufferSubData(GL_ARRAY_BUFFER, 0, aliveParticles * 4 * sizeof(GLfloat), particlePositionData);
+	//set color buffer to color data
+	glBindBuffer(GL_ARRAY_BUFFER, particleColorBuffer);
+	glBufferData(GL_ARRAY_BUFFER, maxParticles * 4 * sizeof(GLfloat), NULL, GL_STREAM_DRAW); //buffer orphaning
+	glBufferSubData(GL_ARRAY_BUFFER, 0, aliveParticles * 4 * sizeof(GLfloat), particleColorData);
 
-		//bind uniforms
-		shader->bindUniform("ProjectionViewModel", scene->getCurrentCamera()->getProjectionMatrix(scene->getWindowSize().x, scene->getWindowSize().y) * scene->getCurrentCamera()->getViewMatrix() * billboard);
-		shader->bindUniform("Color", iter.color);
+	//draw alive particles
+	glDrawArraysInstanced(GL_TRIANGLES, 0, 6, aliveParticles);
+	
 
-		//draw quad
-		glDrawArrays(GL_TRIANGLES, 0, 6);
-	}
-
-	//unbind quad
+	//unbind VAO
 	glBindVertexArray(0);
 	//undo shader effects
 	glDepthMask(true);
@@ -178,7 +222,7 @@ unsigned int ParticleGenerator::findUnusedParticle() const
 	static unsigned int lastUsedParticle = 0;
 
 	//search from the last particle to the end of the vector
-	for (unsigned int i = lastUsedParticle; i < particleCount; i++)
+	for (unsigned int i = lastUsedParticle; i < maxParticles; i++)
 	{
 		//dead particle, return it
 		if (particles[i].life <= 0)

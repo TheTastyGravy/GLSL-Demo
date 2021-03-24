@@ -27,7 +27,7 @@ public:
 		float life;
 	};
 
-	ParticleGenerator(const glm::vec3& position, Scene* scene, unsigned int particleCount);
+	ParticleGenerator(const glm::vec3& position, Scene* scene, unsigned int maxParticles);
 	~ParticleGenerator();
 
 	// emisionRate is in particles/second
@@ -46,9 +46,17 @@ protected:
 	bool isEmiting = false;
 	std::vector<Particle> particles;
 	//total number of particles in array
-	unsigned int particleCount;
+	unsigned int maxParticles;
+	unsigned int aliveParticles;
+
 	unsigned int particleVAO;
-	unsigned int particleVBO;
+	unsigned int particleQuadBuffer;
+	//used to stream particle position and scale to shader
+	unsigned int particlePositionBuffer;
+	float* particlePositionData;
+	//used to stream particle color to shader
+	unsigned int particleColorBuffer;
+	float* particleColorData;
 
 	aie::ShaderProgram* shader;
 	Scene* scene;	//used to get camera
