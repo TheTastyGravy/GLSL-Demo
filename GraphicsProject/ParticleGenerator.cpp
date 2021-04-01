@@ -6,10 +6,10 @@
 #include "Scene.h"
 
 
-ParticleGenerator::ParticleGenerator(const glm::vec3& position, Scene* scene, unsigned int maxParticles) :
+ParticleGenerator::ParticleGenerator(const glm::vec3& emitterPosition, Scene* scene, unsigned int maxParticles) :
 	emisionRate(0), lifeTime(0), startColor(glm::vec4(0)), endColor(glm::vec4(0)), acceleration(glm::vec3(0)), startSpeed(0), startScale(0), endScale(0)
 {
-	this->position = position;
+	this->emitterPosition = emitterPosition;
 	this->scene = scene;
 	this->maxParticles = maxParticles;
 	this->aliveParticles = 0;
@@ -131,13 +131,17 @@ void ParticleGenerator::update(float deltaTime)
 	{
 		timePassed -= emisionRate;
 
-		//get index for an unused particle
-		unsigned int index = findUnusedParticle();
+		//get index for a dead particle
+		int index = findUnusedParticle();
+		//if there are no dead particles, dont create any new ones
+		if (index == -1)
+		{
+			break;
+		}
 
-		//temp particle values
+		//set starting particle values
 		particles[index].life = lifeTime;
-		particles[index].color = startColor;
-		particles[index].position = position;
+		particles[index].position = emitterPosition;
 
 		//random point on a sphere radius startSpeed
 		particles[index].velocity = glm::sphericalRand(startSpeed);
@@ -146,34 +150,38 @@ void ParticleGenerator::update(float deltaTime)
 	//reset count
 	aliveParticles = 0;
 	//update particles
-	for (auto& iter : particles)
+	for (auto& particle : particles)
 	{
 		//if particle is dead, skip it
-		if (iter.life <= 0)
+		if (particle.life <= 0)
 		{
 			continue;
 		}
 
-#pragma region UpdateBufferData
-		//update data for buffers
-		particlePositionData[aliveParticles * 4 + 0] = iter.position.x;
-		particlePositionData[aliveParticles * 4 + 1] = iter.position.y;
-		particlePositionData[aliveParticles * 4 + 2] = iter.position.z;
-		particlePositionData[aliveParticles * 4 + 3] = iter.scale;
-		particleColorData[aliveParticles * 4 + 0] = iter.color.r;
-		particleColorData[aliveParticles * 4 + 1] = iter.color.g;
-		particleColorData[aliveParticles * 4 + 2] = iter.color.b;
-		particleColorData[aliveParticles * 4 + 3] = iter.color.a;
-		//count how mnay particles are currently alive
-		aliveParticles++;
-#pragma endregion
 
 		//update particle variables
-		iter.life -= deltaTime;
-		iter.position += iter.velocity * deltaTime;
-		iter.velocity += acceleration * deltaTime;
-		iter.color = glm::mix(endColor, startColor, iter.life / lifeTime);
-		iter.scale = glm::mix(endScale, startScale, iter.life / lifeTime);
+		particle.life -= deltaTime;
+		particle.velocity += acceleration * deltaTime;
+		particle.position += particle.velocity * deltaTime;
+
+		//the color is only determined by a particles lifetime
+		glm::vec4 particleColor = glm::mix(endColor, startColor, particle.life / lifeTime);
+
+#pragma region UpdateBufferData
+		//update data for buffers
+		particlePositionData[aliveParticles * 4 + 0] = particle.position.x;
+		particlePositionData[aliveParticles * 4 + 1] = particle.position.y;
+		particlePositionData[aliveParticles * 4 + 2] = particle.position.z;
+		//The last value of the position buffer is the scale
+		particlePositionData[aliveParticles * 4 + 3] = glm::mix(endScale, startScale, particle.life / lifeTime);
+		particleColorData[aliveParticles * 4 + 0] = particleColor.r;
+		particleColorData[aliveParticles * 4 + 1] = particleColor.g;
+		particleColorData[aliveParticles * 4 + 2] = particleColor.b;
+		particleColorData[aliveParticles * 4 + 3] = particleColor.a;
+#pragma endregion
+
+		//count how mnay particles are currently alive
+		aliveParticles++;
 	}
 }
 
@@ -185,16 +193,16 @@ void ParticleGenerator::draw()
 	}
 
 	shader->bind();
-	//make particles stack alpha
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	//make particles stack with alpha blending
 	glDepthMask(false);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//bind VAO
 	glBindVertexArray(particleVAO);
 
 
 	//bind uniforms
 	shader->bindUniform("CameraPosition", scene->getCurrentCamera()->getPosition());
-	shader->bindUniform("ProjectionViewMatrix", scene->getCurrentCamera()->getProjectionMatrix(scene->getWindowSize().x, scene->getWindowSize().y) * scene->getCurrentCamera()->getViewMatrix());
+	shader->bindUniform("ProjectionViewMatrix", scene->getCurrentCamera()->getProjectionMatrix(scene->getWindowSize()) * scene->getCurrentCamera()->getViewMatrix());
 	
 	//set position buffer to position data
 	glBindBuffer(GL_ARRAY_BUFFER, particlePositionBuffer);
@@ -211,13 +219,13 @@ void ParticleGenerator::draw()
 
 	//unbind VAO
 	glBindVertexArray(0);
-	//undo shader effects
+	//reset defaults
 	glDepthMask(true);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendFunc(GL_ONE, GL_ZERO);
 }
 
 
-unsigned int ParticleGenerator::findUnusedParticle() const
+int ParticleGenerator::findUnusedParticle() const
 {
 	static unsigned int lastUsedParticle = 0;
 
@@ -244,7 +252,7 @@ unsigned int ParticleGenerator::findUnusedParticle() const
 	}
 
 	//no dead particles. this means too many particles are being spawned
-	//reuse the first particle in this case
+	//reset starting index
 	lastUsedParticle = 0;
-	return 0;
+	return -1;
 }

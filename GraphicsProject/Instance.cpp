@@ -26,10 +26,10 @@ void Instance::draw(Scene* scene)
 	shader->bind();
 
 	//bind the Projection View Matrix and model matrix
-	glm::mat4 pvm = scene->getCurrentCamera()->getProjectionMatrix(scene->getWindowSize().x, scene->getWindowSize().y) * scene->getCurrentCamera()->getViewMatrix() * transform;
+	glm::mat4 pvm = scene->getCurrentCamera()->getProjectionMatrix(scene->getWindowSize()) * scene->getCurrentCamera()->getViewMatrix() * transform;
 	shader->bindUniform("ProjectionViewModel", pvm);
 	shader->bindUniform("ModelMatrix", transform);
-	//all other values are set by Scene, as they are the same for all objects
+	//lighting and camera pos are set by Scene, as they are the same for all objects
 	
 	mesh->draw();
 }

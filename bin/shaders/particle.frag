@@ -1,4 +1,4 @@
-// a simple shader
+// a particle shader with billboarding
 #version 410
 
 in vec4 vParticleColor;

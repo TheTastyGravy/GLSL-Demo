@@ -92,7 +92,7 @@ void Scene::draw()
 	{
 		shader->bind();
 		
-		//bind camera position
+		//bind camera position, since all shaders use the same value
 		shader->bindUniform("CameraPosition", cameras[cameraIndex]->getPosition());
 
 		//bind lighting

@@ -14,7 +14,9 @@ public:
 	// Matrix used to convert into the cameras local space
 	glm::mat4 getViewMatrix() const;
 	// Matrix used to project into clip space
-	glm::mat4 getProjectionMatrix(float width, float height) const;
+	glm::mat4 getProjectionMatrix(float windowWidth, float windowHeight) const;
+	// Matrix used to project into clip space
+	glm::mat4 getProjectionMatrix(glm::vec2 windowSize) const { return getProjectionMatrix(windowSize.x, windowSize.y); }
 
 	bool isCameraStatic() const { return isStatic; }
 	
@@ -23,7 +25,7 @@ private:
 	float phi;		//in degrees
 
 	glm::vec3 position;
-	//is the camera stationary, or able to move?
+	// A static camera can not move or rotate
 	bool isStatic;
 
 	float lastMouseX, lastMouseY;

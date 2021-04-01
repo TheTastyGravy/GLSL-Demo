@@ -41,8 +41,9 @@ bool GraphicsProjectApp::startup()
 	scene->addLight(new DirectionalLight(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0)));
 	scene->addLight(new PointLight(glm::vec3(0), 30, 2, glm::vec3(1, 0, 0)));
 
-	particleGen = new ParticleGenerator(glm::vec3(0), scene, 50);
-	particleGen->setup(20, 2, glm::vec4(1, 0, 0, 1), glm::vec4(0, 1, 0, 0), glm::vec3(0, -1, 0), 2, 1, 0);
+	//create particle generator
+	particleGen = new ParticleGenerator(glm::vec3(0, 0, -3), scene, 65);
+	particleGen->setup(30, 2, glm::vec4(1, 0.2f, 0, 0.8f), glm::vec4(1, 1, 0, 0), glm::vec3(0, 1.2f, 0), 0.5f, 0.6f, 0.1f);
 	
 	//create mesh objects
 	return loadShaderAndMeshLogic();
@@ -89,7 +90,6 @@ void GraphicsProjectApp::draw()
 	//get camera matrices
 	glm::mat4 projectionMatrix = scene->getCurrentCamera()->getProjectionMatrix(getWindowWidth(), getWindowHeight());
 	glm::mat4 viewMatrix = scene->getCurrentCamera()->getViewMatrix();
-
 
 	//draw gizmo for point lights
 	for (auto pointLight : scene->getPointLights())
@@ -180,6 +180,11 @@ bool GraphicsProjectApp::loadShaderAndMeshLogic()
 
 void GraphicsProjectApp::IMGUI_Logic()
 {
+	//display FPS with a GUI element
+	ImGui::Begin("FPS");
+	ImGui::Text(std::to_string(getFPS()).c_str());
+	ImGui::End();
+
 #pragma region Lighting Editor
 	ImGui::Begin("Lighting Editor");
 	//ambient light
@@ -297,6 +302,8 @@ void GraphicsProjectApp::IMGUI_Logic()
 	ImGui::End();
 #pragma endregion
 
+	//	--------------------------------------------------
+
 	//create tools for editing materials
 	ImGui::Begin("Material Editor");
 	imguiMaterialTool("Bunny", bunny);
@@ -304,6 +311,7 @@ void GraphicsProjectApp::IMGUI_Logic()
 	imguiMaterialTool("M1 Carbine", m1Carbine);
 	ImGui::End();
 
+	//	--------------------------------------------------
 
 	//create tools for editing each objects transform
 	ImGui::Begin("Transform Editor");
@@ -339,6 +347,7 @@ void GraphicsProjectApp::IMGUI_Logic()
 	trans.transform = Instance::createTransform(trans.position, trans.rotation, trans.scale);
 	ImGui::End();
 
+	//	--------------------------------------------------
 
 	//create tool for swapping camera
 	ImGui::Begin("Camera Controller");
@@ -367,7 +376,6 @@ void GraphicsProjectApp::IMGUI_Logic()
 	ImGui::End();
 }
 
-// Create ImGui components to edit 'obj'
 void GraphicsProjectApp::imguiMaterialTool(std::string name, MeshObject& obj)
 {
 	ImGui::Spacing();

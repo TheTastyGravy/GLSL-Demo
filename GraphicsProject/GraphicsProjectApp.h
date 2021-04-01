@@ -41,6 +41,7 @@ protected:
 		glm::vec3 scale;
 	};
 
+	// Create ImGui components to edit a mesh object
 	void imguiMaterialTool(std::string name, MeshObject& obj);
 
 

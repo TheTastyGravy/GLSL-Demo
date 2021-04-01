@@ -88,10 +88,10 @@ glm::mat4 Camera::getViewMatrix() const
 	//find the forward vector
 	glm::vec3 forward(glm::cos(phiR) * glm::cos(thetaR), glm::sin(phiR), glm::cos(phiR) * glm::sin(thetaR));
 
-	return glm::lookAt(position, position + forward, glm::vec3(0, 1, 0));;
+	return glm::lookAt(position, position + forward, glm::vec3(0, 1, 0));
 }
 
-glm::mat4 Camera::getProjectionMatrix(float width, float height) const
+glm::mat4 Camera::getProjectionMatrix(float windowWidth, float windowHeight) const
 {
-	return glm::perspective(glm::pi<float>() * 0.25f, width / height, 0.1f, 1000.f);
+	return glm::perspective(glm::pi<float>() * 0.25f, windowWidth / windowHeight, 0.1f, 1000.f);
 }

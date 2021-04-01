@@ -44,17 +44,23 @@ public:
 	Scene(std::vector<Camera*> cameras, glm::vec2 windowSize, glm::vec3 ambientLight);
 	~Scene();
 
+	// Add an instance to the scene, registering its shader
 	void addInstance(Instance* instance);
+	// Add a directional light source to the scene
 	void addLight(DirectionalLight* light) { directionalLights.push_back(light); }
+	// Add a point light source to the scene
 	void addLight(PointLight* light) { pointLights.push_back(light); }
 
+	// Setup instance sahders and draw all instances in the scene
 	void draw();
 
 
 	std::vector<Camera*>& getCameras() { return cameras; }
 	// Get the currently active camera
 	Camera* getCurrentCamera() const { return cameras[cameraIndex]; }
+	// Get the index of the current camera
 	int getCameraIndex() const { return cameraIndex; }
+	// Set the index of the camera to use
 	void setCameraIndex(int index) { cameraIndex = index; }
 
 	glm::vec2 getWindowSize() const { return windowSize; }
@@ -68,12 +74,12 @@ protected:
 	int cameraIndex = 0;
 	glm::vec2 windowSize;
 
-	//lights
+	///lights
 	glm::vec3 ambientLight;
 	std::vector<DirectionalLight*> directionalLights;
 	std::vector<PointLight*> pointLights;
 	
 	std::list<Instance*> instances;
-	//updated with each unique shader when an instance is added
+	// Each unique shader used by the scenes instances
 	std::list<aie::ShaderProgram*> shaders;
 };

@@ -18,6 +18,8 @@ public:
 	// Uses a transform using position, eulerAngles, and scale
 	Instance(const glm::vec3& position, const glm::vec3& eulerAngles, const glm::vec3& scale, aie::OBJMesh* mesh, aie::ShaderProgram* shader);
 
+	// Draw the instance's mesh using the scenes active camera
+	// Assumes the shader's lighting and camera position are bound
 	void draw(Scene* scene);
 
 	// Create a transform with a set position, rotation, and scale

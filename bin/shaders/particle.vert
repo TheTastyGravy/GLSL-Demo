@@ -1,4 +1,4 @@
-// a simple shader
+// a particle shader with billboarding
 #version 410
 
 layout(location = 0) in vec4 Position;
@@ -17,16 +17,13 @@ void main()
 	vec3 zAxis= normalize(ParticlePos.xyz - CameraPosition);
 	vec3 xAxis= cross(vec3(0, 1, 0), zAxis);
 	vec3 yAxis= cross(zAxis, xAxis);
-	mat4 billboard = mat4(vec4(xAxis, 0), vec4(yAxis, 0), vec4(zAxis, 0), vec4(0,0,0,1));
+	mat4 billboard = mat4(vec4(xAxis, 0), vec4(yAxis, 0), vec4(zAxis, 0), vec4(ParticlePos.xyz, 1));
 
-    //translation matrix to move to the particles position
-    mat4 translate = mat4(1);
-    translate[3] = vec4(ParticlePos.xyz, 1);
     //scalar matrix to the particles size
     mat4 scale = mat4(ParticlePos.w);
     scale[3][3] = 1;
     //apply transformations to get model matrix
-	billboard = translate * billboard * scale;
+	billboard *= scale;
 
     vParticleColor = ParticleColor;
     gl_Position = ProjectionViewMatrix * billboard * Position;
