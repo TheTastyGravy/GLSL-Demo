@@ -3,19 +3,19 @@
 #include <Input.h>
 
 
-Camera::Camera(glm::vec3 position, bool isStatic, float phi, float theta)
+Camera::Camera(glm::vec3 a_position, bool a_isStatic, float a_phi, float a_theta)
 {
-	this->position = position;
-	this->phi = phi;
-	this->theta = theta;
-	this->isStatic = isStatic;
+	m_position = a_position;
+	m_phi = a_phi;
+	m_theta = a_theta;
+	m_isStatic = a_isStatic;
 
-	this->lastMouseX = 0;
-	this->lastMouseY = 0;
+	m_lastMouseX = 0;
+	m_lastMouseY = 0;
 }
 
 
-void Camera::update(float deltaTime)
+void Camera::update(float a_deltaTime)
 {
 	//static cameras dont need to move
 	if (isCameraStatic())
@@ -25,8 +25,8 @@ void Camera::update(float deltaTime)
 
 
 	aie::Input* input = aie::Input::getInstance();
-	float thetaR = glm::radians(theta);
-	float phiR = glm::radians(phi);
+	float thetaR = glm::radians(m_theta);
+	float phiR = glm::radians(m_phi);
 
 	//find the forward, right and up axes for the camera
 	glm::vec3 forward(glm::cos(phiR) * glm::cos(thetaR), glm::sin(phiR), glm::cos(phiR) * glm::sin(thetaR));
@@ -38,27 +38,27 @@ void Camera::update(float deltaTime)
 
 	if (input->isKeyDown(aie::INPUT_KEY_E))
 	{
-		position += up * deltaTime * speedMult;
+		m_position += up * a_deltaTime * speedMult;
 	}
 	if (input->isKeyDown(aie::INPUT_KEY_Q))
 	{
-		position -= up * deltaTime * speedMult;
+		m_position -= up * a_deltaTime * speedMult;
 	}
 	if (input->isKeyDown(aie::INPUT_KEY_A))
 	{
-		position -= right * deltaTime * speedMult;
+		m_position -= right * a_deltaTime * speedMult;
 	}
 	if (input->isKeyDown(aie::INPUT_KEY_D))
 	{
-		position += right * deltaTime * speedMult;
+		m_position += right * a_deltaTime * speedMult;
 	}
 	if (input->isKeyDown(aie::INPUT_KEY_W))
 	{
-		position += forward * deltaTime * speedMult;
+		m_position += forward * a_deltaTime * speedMult;
 	}
 	if (input->isKeyDown(aie::INPUT_KEY_S))
 	{
-		position -= forward * deltaTime * speedMult;
+		m_position -= forward * a_deltaTime * speedMult;
 	}
 #pragma endregion
 
@@ -71,27 +71,27 @@ void Camera::update(float deltaTime)
 	//use mouse delta to rotate while holding M2
 	if (input->isMouseButtonDown(aie::INPUT_MOUSE_BUTTON_RIGHT))
 	{
-		theta += turnSpeed * (mX - lastMouseX) * deltaTime;
-		phi += turnSpeed * (mY - lastMouseY) * deltaTime;
+		m_theta += turnSpeed * (mX - m_lastMouseX) * a_deltaTime;
+		m_phi += turnSpeed * (mY - m_lastMouseY) * a_deltaTime;
 	}
 
 	//store the last values
-	lastMouseX = mX;
-	lastMouseY = mY;
+	m_lastMouseX = mX;
+	m_lastMouseY = mY;
 }
 
 
 glm::mat4 Camera::getViewMatrix() const
 {
-	float thetaR = glm::radians(theta);
-	float phiR = glm::radians(phi);
+	float thetaR = glm::radians(m_theta);
+	float phiR = glm::radians(m_phi);
 	//find the forward vector
 	glm::vec3 forward(glm::cos(phiR) * glm::cos(thetaR), glm::sin(phiR), glm::cos(phiR) * glm::sin(thetaR));
 
-	return glm::lookAt(position, position + forward, glm::vec3(0, 1, 0));
+	return glm::lookAt(m_position, m_position + forward, glm::vec3(0, 1, 0));
 }
 
-glm::mat4 Camera::getProjectionMatrix(float windowWidth, float windowHeight) const
+glm::mat4 Camera::getProjectionMatrix(float a_windowWidth, float a_windowHeight) const
 {
-	return glm::perspective(glm::pi<float>() * 0.25f, windowWidth / windowHeight, 0.1f, 1000.f);
+	return glm::perspective(glm::pi<float>() * 0.25f, a_windowWidth / a_windowHeight, 0.1f, 1000.f);
 }

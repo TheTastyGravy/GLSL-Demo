@@ -1,3 +1,10 @@
+/*  Created: 10/3/2021
+ *  Author: Thomas Dufresne
+ *
+ *  Last Modified: 8/4/2021
+ *
+ *	Used as the entry point for the graphics application
+ */
 #pragma once
 #include "Application.h"
 #include <glm/mat4x4.hpp>
@@ -17,7 +24,7 @@ public:
 	virtual bool startup();
 	virtual void shutdown();
 
-	virtual void update(float deltaTime);
+	virtual void update(float a_deltaTime);
 	virtual void draw();
 
 	bool loadShaderAndMeshLogic();
@@ -27,32 +34,32 @@ public:
 protected:
 	struct MeshObject
 	{
-		aie::OBJMesh mesh;
-		aie::OBJMesh::Material* material;
+		aie::OBJMesh m_mesh;
+		aie::OBJMesh::Material* m_material;
 	};
 	// Used to edit objeects transforms with ImGui
 	struct EditorTransform
 	{
-		std::string name;
-		glm::mat4& transform;
+		std::string m_name;
+		glm::mat4& m_transform;
 
-		glm::vec3 position;
-		glm::vec3 rotation;
-		glm::vec3 scale;
+		glm::vec3 m_position;
+		glm::vec3 m_rotation;
+		glm::vec3 m_scale;
 	};
 
 	// Create ImGui components to edit a mesh object
-	void imguiMaterialTool(std::string name, MeshObject& obj);
+	void imguiMaterialTool(std::string a_name, MeshObject& a_obj);
 
 
-	Scene* scene;
+	Scene* m_scene;
 
-	ParticleGenerator* particleGen;
+	ParticleGenerator* m_particleGen;
 
 	//mesh objects
-	MeshObject bunny;
-	MeshObject soulSpear;
-	MeshObject m1Carbine;
+	MeshObject m_bunny;
+	MeshObject m_soulSpear;
+	MeshObject m_m1Carbine;
 
-	std::vector<EditorTransform> transforms;
+	std::vector<EditorTransform> m_transforms;
 };

@@ -1,3 +1,11 @@
+/*  Created: 19/3/2021
+ *  Author: Thomas Dufresne
+ *
+ *  Last Modified: 8/4/2021
+ *
+ *	GPU instanced particle generator with billboarding. After instantiating the class, 
+ *	setup() is used to start emitting particles, and sets the particle variables.
+ */
 #pragma once
 #include <glm/glm.hpp>
 #include <vector>
@@ -14,25 +22,25 @@ public:
 	struct Particle
 	{
 		Particle() :
-			position(glm::vec3(0)), velocity(glm::vec3(0)), life(0)
+			m_position(glm::vec3(0)), m_velocity(glm::vec3(0)), m_life(0)
 		{}
 
-		glm::vec3 position;
-		glm::vec3 velocity;
+		glm::vec3 m_position;
+		glm::vec3 m_velocity;
 		//decrements while alive until 0
-		float life;
+		float m_life;
 
 		//particles dont need to store color or scale as they are determined by its lifetime
 	};
 
-	ParticleGenerator(const glm::vec3& emitterPosition, Scene* scene, unsigned int maxParticles);
+	ParticleGenerator(const glm::vec3& a_emitterPosition, Scene* a_scene, unsigned int a_maxParticles);
 	~ParticleGenerator();
 
 	// Setup generator to start emitting particles
 	// EmisionRate is in particles/second
-	void setup(float emisionRate, float lifeTime, glm::vec4 startColor, glm::vec4 endColor, glm::vec3 acceleration, float startSpeed, float startScale, float endScale);
+	void setup(float a_emisionRate, float a_lifeTime, glm::vec4 a_startColor, glm::vec4 a_endColor, glm::vec3 a_acceleration, float a_startSpeed, float a_startScale, float a_endScale);
 
-	void update(float deltaTime);
+	void update(float a_deltaTime);
 	void draw();
 
 protected:
@@ -41,35 +49,35 @@ protected:
 	int findUnusedParticle() const;
 	
 
-	glm::vec3 emitterPosition;
+	glm::vec3 m_emitterPosition;
 
 	//is this generator emiting particles?
-	bool isEmiting = false;
-	std::vector<Particle> particles;
+	bool m_isEmiting = false;
+	std::vector<Particle> m_particles;
 	//total number of particles in array
-	unsigned int maxParticles;
-	unsigned int aliveParticles;
+	unsigned int m_maxParticles;
+	unsigned int m_aliveParticles;
 
-	unsigned int particleVAO;
-	unsigned int particleQuadBuffer;
+	unsigned int m_particleVAO;
+	unsigned int m_particleQuadBuffer;
 	//used to stream particle position and scale to shader
-	unsigned int particlePositionBuffer;
-	float* particlePositionData;
+	unsigned int m_particlePositionBuffer;
+	float* m_particlePositionData;
 	//used to stream particle color to shader
-	unsigned int particleColorBuffer;
-	float* particleColorData;
+	unsigned int m_particleColorBuffer;
+	float* m_particleColorData;
 
-	aie::ShaderProgram* shader;
-	Scene* scene;	//used to get camera
+	aie::ShaderProgram* m_shader;
+	Scene* m_scene;	//used to get camera
 
 
-	float emisionRate;
+	float m_emisionRate;
 
-	float lifeTime;
-	glm::vec4 startColor;
-	glm::vec4 endColor;
-	glm::vec3 acceleration;
-	float startSpeed;
-	float startScale;
-	float endScale;
+	float m_lifeTime;
+	glm::vec4 m_startColor;
+	glm::vec4 m_endColor;
+	glm::vec3 m_acceleration;
+	float m_startSpeed;
+	float m_startScale;
+	float m_endScale;
 };
