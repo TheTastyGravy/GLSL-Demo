@@ -1,5 +1,6 @@
 # GLSL Project
 Custom graphics implementation in C++ and GLSL, with AIE bootstrap
+![Screenshot](Screenshot.png)
 
 ## Building
 Bootstrap is rather error prone, so building can be problematic. When building bootstrap, one configuration will cause a linker error, so try both if one doesnt work. Beyond that, errors are more unique and have to be solved on a case-by-case basis.
